@@ -1,0 +1,40 @@
+# Python Dependencies for CRM Backend
+
+# Firebase Admin SDK
+firebase-admin==6.4.0
+firebase-functions==4.5.0
+
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+flask-restful==0.3.10
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Data validation
+pydantic==2.5.0
+marshmallow==3.20.1
+
+# Gmail API
+google-api-python-client==2.100.0
+google-auth-httplib2==0.1.1
+google-auth-oauthlib==1.1.0
+
+# HTTP Requests
+requests==2.31.0
+httpx==0.25.2
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Logging
+python-json-logger==2.0.7
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+
+
