@@ -1,14 +1,15 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Customers from './pages/Customers';
-import CustomerDetail from './pages/CustomerDetail';
-import CustomerForm from './pages/CustomerForm';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
-// Protected route wrapper
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
+import CustomerForm from "./pages/CustomerForm"; // ✅ you already have this
+
+// ✅ Protected route wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { authenticated, loading } = useAuth();
 
@@ -32,8 +33,11 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* 🔐 Auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* 🏠 Protected dashboard */}
           <Route
             path="/dashboard"
             element={
@@ -42,6 +46,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* 👥 Customers list */}
           <Route
             path="/customers"
             element={
@@ -50,6 +56,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* 👤 Single customer details */}
           <Route
             path="/customers/:id"
             element={
@@ -58,6 +66,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* 📝 Add/Edit Customer Form */}
           <Route
             path="/customers/new"
             element={
@@ -66,14 +76,8 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/customers/edit/:id"
-            element={
-              <ProtectedRoute>
-                <CustomerForm />
-              </ProtectedRoute>
-            }
-          />
+
+          {/* 🔁 Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
@@ -82,4 +86,3 @@ function App() {
 }
 
 export default App;
-

@@ -22,9 +22,21 @@ except ImportError:
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configure CORS
-cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173').split(',')
-CORS(app, origins=cors_origins)
+# Configure CORS properly for all local and dev environments
+CORS(app, resources={r"/*": {
+    "origins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://192.168.1.4:5174",
+        "http://192.168.1.4:5173",
+        "http://192.168.1.4:5175"  # important: your Vite dev IP
+    ],
+    "allow_headers": ["Content-Type", "Authorization"],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "supports_credentials": True
+}})
 
 # Initialize Flask-RESTful API
 api = Api(app)

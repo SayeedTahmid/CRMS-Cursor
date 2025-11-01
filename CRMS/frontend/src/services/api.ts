@@ -1,44 +1,39 @@
-/** API service for backend communication */
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const rawBase = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api";
+// Normalize URL (no trailing slash)
+const API_URL = rawBase.replace(/\/$/, "");
 
-// Create axios instance
+console.log("Using API base URL:",API_URL);
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('idToken');
-    if (token) {
+    const token = localStorage.getItem("idToken");
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - clear token and redirect to login
-      localStorage.removeItem('idToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      console.warn("Unauthorized: Token may be expired or invalid.");
+    } else if (error.response?.status === 404) {
+      console.warn("Endpoint not found:", error.config?.url);
     }
     return Promise.reject(error);
   }
 );
 
 export default api;
-
-

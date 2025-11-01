@@ -1,154 +1,94 @@
-/** Firebase Authentication Service */
+// src/services/auth.ts
 import {
-  getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  User,
-  Auth
-} from 'firebase/auth';
-import api from './api';
+} from "firebase/auth";
+import api from "./api";
+import { auth } from "./firebase"; // ✅ make sure path is correct
 
-let auth: Auth | null = null;
-
-// Initialize Firebase Auth
-export const initAuth = (firebaseAuth: Auth) => {
-  auth = firebaseAuth;
-};
-
-export const getFirebaseAuth = (): Auth => {
-  if (!auth) {
-    throw new Error('Firebase Auth not initialized');
-  }
-  return auth;
-};
-
+/** ---- USER DATA INTERFACE ---- */
 export interface UserData {
-  id: string;
-  email: string;
-  display_name: string;
-  role: string;
-  tenant_id: string;
-  [key: string]: any;
+  uid: string;
+  email: string | null;
+  displayName?: string | null;
 }
 
-export interface AuthResponse {
-  authenticated: boolean;
-  user?: UserData;
-  message?: string;
-}
-
-/**
- * Sign in with email and password
- */
-export const signIn = async (email: string, password: string): Promise<{ user: UserData; idToken: string }> => {
+/** ---- SIGN IN ---- */
+export async function signIn(email: string, password: string): Promise<UserData> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth!, email, password);
-    const idToken = await userCredential.user.getIdToken();
-    
-    // Verify token with backend
-    const response = await api.post('/auth/verify', { idToken });
-    const data: AuthResponse = response.data;
-    
-    if (!data.authenticated) {
-      throw new Error(data.message || 'Authentication failed');
-    }
-    
-    // Store token and user data
-    localStorage.setItem('idToken', idToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    
-    return { user: data.user!, idToken };
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    const idToken = await user.getIdToken();
+
+    // store Firebase token locally
+    localStorage.setItem("idToken", idToken);
+
+    // verify with backend
+    await api.post("/auth/verify", { idToken });
+
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+    };
   } catch (error: any) {
-    throw new Error(error.message || 'Sign in failed');
+    console.error("Sign-in error:", error);
+    throw new Error(error.message || "Sign-in failed");
   }
-};
+}
 
-/**
- * Register a new user
- */
-export const register = async (
-  email: string,
-  password: string,
-  displayName: string,
-  tenantId?: string
-): Promise<{ user: UserData; idToken: string }> => {
+/** ---- REGISTER ---- */
+export async function register(email: string, password: string, displayName?: string) {
   try {
-    // Create Firebase Auth user
-    const userCredential = await createUserWithEmailAndPassword(auth!, email, password);
-    const idToken = await userCredential.user.getIdToken();
-    
-    // Register with backend
-    const response = await api.post('/auth/register', {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    const idToken = await user.getIdToken();
+
+    await api.post("/auth/register", {
       email,
       password,
-      display_name: displayName,
-      tenant_id: tenantId,
+      display_name: displayName || email,
     });
-    
-    // Store token and user data
-    localStorage.setItem('idToken', idToken);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    
-    return { user: response.data.user, idToken };
+
+    localStorage.setItem("idToken", idToken);
+
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+    };
   } catch (error: any) {
-    throw new Error(error.message || 'Registration failed');
+    console.error("Register error:", error);
+    throw new Error(error.message || "Registration failed");
   }
-};
+}
 
-/**
- * Sign out
- */
-export const signOutUser = async (): Promise<void> => {
+/** ---- GET CURRENT USER ---- */
+export function getCurrentUser(): UserData | null {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return null;
+
+  return {
+    uid: currentUser.uid,
+    email: currentUser.email,
+    displayName: currentUser.displayName,
+  };
+}
+
+/** ---- CHECK AUTH STATUS ---- */
+export function isAuthenticated(): boolean {
+  return !!localStorage.getItem("idToken");
+}
+
+/** ---- LOGOUT ---- */
+export async function signOutUser(): Promise<void> {
   try {
-    await signOut(auth!);
-    localStorage.removeItem('idToken');
-    localStorage.removeItem('user');
-  } catch (error: any) {
-    throw new Error(error.message || 'Sign out failed');
-  }
-};
-
-/**
- * Get current user from storage
- */
-export const getCurrentUser = (): UserData | null => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return null;
-    return JSON.parse(userStr);
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Get current auth token
- */
-export const getIdToken = (): string | null => {
-  return localStorage.getItem('idToken');
-};
-
-/**
- * Check if user is authenticated
- */
-export const isAuthenticated = (): boolean => {
-  return !!getIdToken() && !!getCurrentUser();
-};
-
-/**
- * Refresh the auth token
- */
-export const refreshToken = async (): Promise<string | null> => {
-  try {
-    if (!auth?.currentUser) return null;
-    const idToken = await auth.currentUser.getIdToken(true);
-    localStorage.setItem('idToken', idToken);
-    return idToken;
+    await signOut(auth);
+    localStorage.removeItem("idToken");
+    console.log("User logged out successfully");
   } catch (error) {
-    console.error('Error refreshing token:', error);
-    return null;
+    console.error("Logout failed:", error);
+    throw error;
   }
-};
-
-
+}
