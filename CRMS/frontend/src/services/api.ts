@@ -13,6 +13,8 @@ const api = axios.create({
   },
 });
 
+// ✅ Attach token for every request
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("idToken");
@@ -24,11 +26,21 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ✅ Handle 401 errors properly
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       console.warn("Unauthorized: Token may be expired or invalid.");
+
+      //clear local auth
+      localStorage.removeItem("idToken");
+      localStorage.removeItem("user");
+
+      //redirect to login page
+      window.location.href = "/login";
+      
     } else if (error.response?.status === 404) {
       console.warn("Endpoint not found:", error.config?.url);
     }

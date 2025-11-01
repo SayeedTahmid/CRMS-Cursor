@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signIn } from '../services/auth';
-import { useAuth } from '../contexts/AuthContext';
+//import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,20 +9,21 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+ // const { logout } = useAuth();
 
   // Clear any existing session on login page
-  React.useEffect(() => {
+  /*React.useEffect(() => {
     logout();
-  }, [logout]);
-
+   }, [logout]);
+ */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      const userData = await signIn(email, password);
+      console.log("Login successful:",userData);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
@@ -36,10 +37,10 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-text-primary">
-            Sign in to your account
+            Welcome Next Gen CRM System
           </h2>
           <p className="mt-2 text-center text-sm text-text-secondary">
-            Welcome to Modern CRM System
+            Please sign in to your account
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

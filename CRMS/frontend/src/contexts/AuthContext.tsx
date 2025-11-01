@@ -1,6 +1,19 @@
-/** Authentication Context */
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserData, getCurrentUser, isAuthenticated, signOutUser } from '../services/auth';
+// frontend/src/contexts/AuthContext.tsx
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import {
+  UserData,
+  getCurrentUser,
+  isAuthenticated,
+  signOutUser,
+} from "../services/auth";
+import { auth } from "../services/firebase"; // adjust import path if your firebase export is elsewhere
+import { onIdTokenChanged } from "firebase/auth";
 
 interface AuthContextType {
   user: UserData | null;
@@ -13,44 +26,78 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // Keep localStorage idToken updated whenever Firebase refreshes the token
   useEffect(() => {
-    // Check if user is already authenticated
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
+    let isInitial = true;
+
+    const unsubscribe = onIdTokenChanged(auth, async (fbUser) => {
+      try {
+        if (fbUser) {
+          const token = await fbUser.getIdToken();
+          localStorage.setItem("idToken", token);
+          setUser({
+            uid: fbUser.uid,
+            email: fbUser.email,
+            displayName: fbUser.displayName || null,
+          });
+        } else {
+          if (!isInitial){
+            localStorage.removeItem("idToken");
+            setUser(null);
+          }
+        }
+      } catch (err) {
+        console.error("Error refreshing ID token:", err);
+        localStorage.removeItem("idToken");
+        setUser(null);
+      } finally {
+        setLoading(false);
+        isInitial= false;
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  const logout = async () => {
+  // simple logout wrapper used by pages
+  const logout = async (): Promise<void> => {
     try {
       await signOutUser();
       setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
+      localStorage.removeItem("idToken");
+    } catch (err) {
+      console.error("Logout failed:", err);
+      throw err;
     }
   };
+
+  // If auth state already exists (on initial load), hydrate user
+ /* useEffect(() => {
+    const cur = getCurrentUser();
+    if (cur) setUser(cur);
+    setLoading(false);
+  }, []); */
 
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        authenticated: isAuthenticated(),
+        authenticated: !!user && isAuthenticated(),
         logout,
       }}
     >
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 };
-
-

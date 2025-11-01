@@ -87,8 +87,8 @@ export async function signOutUser(): Promise<void> {
     await signOut(auth);
     localStorage.removeItem("idToken");
     console.log("User logged out successfully");
-  } catch (error) {
-    console.error("Logout failed:", error);
-    throw error;
+  } catch (err) {
+    console.error("Logout failed:", err);
+    throw err;
   }
 }
