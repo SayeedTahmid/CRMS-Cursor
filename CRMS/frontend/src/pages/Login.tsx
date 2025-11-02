@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signIn } from '../services/auth';
-//import { useAuth } from '../contexts/AuthContext';
+import { signIn, isAuthenticated } from '../services/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,13 +9,28 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
- // const { logout } = useAuth();
+  const { logout } = useAuth();
 
-  // Clear any existing session on login page
-  /*React.useEffect(() => {
+  // Clear old session when visiting login
+  useEffect(() => {
     logout();
-   }, [logout]);
- */
+  }, [logout]);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const authStatus = await isAuthenticated();
+        if (authStatus) {
+          navigate("/dashboard", { replace: true });
+        }
+      } catch (err) {
+        console.error("Error checking auth status:", err);
+      }
+    };
+    checkAuthStatus();
+  }, [navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -23,10 +38,11 @@ const Login: React.FC = () => {
 
     try {
       const userData = await signIn(email, password);
-      console.log("Login successful:",userData);
+      console.log('✅ Login successful:', userData);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+      console.error('❌ Login failed:', err);
+      setError(err.message || 'Invalid credentials or server error');
     } finally {
       setLoading(false);
     }
@@ -43,6 +59,7 @@ const Login: React.FC = () => {
             Please sign in to your account
           </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
@@ -53,7 +70,6 @@ const Login: React.FC = () => {
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -69,7 +85,6 @@ const Login: React.FC = () => {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -85,15 +100,13 @@ const Login: React.FC = () => {
             </div>
           )}
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-purple hover:bg-secondary-purple focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-purple disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2 px-4 text-sm font-medium rounded-md text-white bg-primary-purple hover:bg-secondary-purple disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
 
           <div className="text-center text-sm">
             <span className="text-text-secondary">Don't have an account? </span>
@@ -108,5 +121,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
-

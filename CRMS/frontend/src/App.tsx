@@ -1,3 +1,4 @@
+// frontend/src/App.tsx
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -7,9 +8,9 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
-import CustomerForm from "./pages/CustomerForm"; // ✅ you already have this
+import CustomerForm from "./pages/CustomerForm";
 
-// ✅ Protected route wrapper
+/** ✅ Protected route wrapper */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { authenticated, loading } = useAuth();
 
@@ -26,6 +27,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   return <>{children}</>;
+};
+
+/** ✅ Smart root redirect (decides login or dashboard) */
+const RootRedirect: React.FC = () => {
+  const { authenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-purple"></div>
+      </div>
+    );
+  }
+
+  return <Navigate to={authenticated ? "/dashboard" : "/login"} replace />;
 };
 
 function App() {
@@ -77,8 +93,11 @@ function App() {
             }
           />
 
-          {/* 🔁 Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* 🚀 Smart redirect for "/" */}
+          <Route path="/" element={<RootRedirect />} />
+
+          {/* ❌ Fallback for any unknown route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

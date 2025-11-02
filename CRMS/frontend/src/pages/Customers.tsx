@@ -9,6 +9,7 @@ const Customers: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [total, setTotal] = useState<number>(0); // ✅ new state for total count
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -20,12 +21,14 @@ const Customers: React.FC = () => {
     try {
       const data = await customerService.getAll({ search });
       setCustomers(data.customers);
+      setTotal(data.total || data.customers?.length || 0); // ✅ add this line
     } catch (error) {
       console.error('Error loading customers:', error);
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +46,7 @@ const Customers: React.FC = () => {
               Modern CRM
             </Link>
             <div className="flex items-center space-x-4">
-              <span className="text-text-secondary">Welcome, {user?.display_name}</span>
+              <span className="text-text-secondary">Welcome, {user?.displayName}</span>
               <button
                 onClick={logout}
                 className="px-4 py-2 text-sm font-medium text-text-primary hover:text-primary-purple transition-colors"
@@ -60,7 +63,12 @@ const Customers: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold text-text-primary">Customers</h2>
+            <h2 className="text-3xl font-bold text-text-primary">
+               Customers
+              <span className="text-text-secondary text-base ml-2">
+                ({total})
+             </span>
+           </h2>
               <p className="text-text-secondary mt-1">Manage your customer relationships</p>
             </div>
             <button 

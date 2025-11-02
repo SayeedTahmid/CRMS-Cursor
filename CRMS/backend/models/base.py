@@ -9,34 +9,40 @@ class BaseModel:
     
     def __init__(self, **kwargs):
         """Initialize model from Firestore document data"""
-        self.id = kwargs.get('id')
-        self.created_at = kwargs.get('created_at') or datetime.utcnow()
-        self.updated_at = kwargs.get('updated_at') or datetime.utcnow()
-        self.created_by = kwargs.get('created_by')
-        self.tenant_id = kwargs.get('tenant_id')
-    
-    def to_dict(self) -> Dict[str, Any]:
+        self.id: Optional[str] = kwargs.get('id')
+        self.created_at: datetime = kwargs.get('created_at') or datetime.utcnow()
+        self.updated_at: datetime = kwargs.get('updated_at') or datetime.utcnow()
+        self.created_by: Optional[str] = kwargs.get('created_by')
+        self.tenant_id: Optional[str] = kwargs.get('tenant_id')
+
+    def to_dict(self, include_id: bool = False) -> Dict[str, Any]:
         """Convert model to dictionary for Firestore"""
-        data = {
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+        data: Dict[str, Any] = {
+            'created_at': self.created_at or datetime.utcnow(),
+            'updated_at': self.updated_at or datetime.utcnow(),
         }
-        
+
         if self.created_by:
             data['created_by'] = self.created_by
         if self.tenant_id:
             data['tenant_id'] = self.tenant_id
-            
+        if include_id and self.id:
+            data['id'] = self.id
+
         return data
-    
+
     @classmethod
     def from_dict(cls, doc_id: str, data: Dict[str, Any]):
         """Create model instance from Firestore document data"""
-        data['id'] = doc_id
-        return cls(**data)
+        return cls(**{**data, 'id': doc_id})
+
     
-    def update_timestamp(self):
-        """Update the updated_at timestamp"""
-        self.updated_at = datetime.utcnow()
+    def update_timestamps(self, is_new=False):
+        """Automatically manage created_at and updated_at fields"""
+        now = datetime.utcnow()
+        if is_new and not getattr(self, "created_at", None):
+            self.created_at = now
+        self.updated_at = now
 
 
+   

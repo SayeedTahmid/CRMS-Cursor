@@ -70,7 +70,7 @@ const CustomerDetail: React.FC = () => {
               Modern CRM
             </Link>
             <div className="flex items-center space-x-4">
-              <span className="text-text-secondary">Welcome, {user?.display_name}</span>
+              <span className="text-text-secondary">Welcome, {user?.displayName}</span>
               <button
                 onClick={logout}
                 className="px-4 py-2 text-sm font-medium text-text-primary hover:text-primary-purple transition-colors"

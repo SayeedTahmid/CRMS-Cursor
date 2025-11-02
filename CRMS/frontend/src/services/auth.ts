@@ -77,9 +77,21 @@ export function getCurrentUser(): UserData | null {
 }
 
 /** ---- CHECK AUTH STATUS ---- */
-export function isAuthenticated(): boolean {
-  return !!localStorage.getItem("idToken");
+export async function isAuthenticated(): Promise<boolean> {
+  const token = localStorage.getItem("idToken");
+  if (!token) return false;
+
+  try {
+    // Verify with backend if token is valid
+    const res = await api.post("/auth/verify", { idToken: token });
+    return res.data?.authenticated === true;
+  } catch (err) {
+    console.warn("Auth check failed:", err);
+    localStorage.removeItem("idToken");
+    return false;
+  }
 }
+
 
 /** ---- LOGOUT ---- */
 export async function signOutUser(): Promise<void> {

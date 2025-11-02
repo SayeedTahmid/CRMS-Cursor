@@ -1,23 +1,28 @@
+// src/services/api.ts
 import axios from "axios";
 
-const rawBase = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api";
-// Normalize URL (no trailing slash)
+// ✅ 1️⃣ Get base URL from .env or fallback
+const rawBase = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000/api";
+
+// ✅ 2️⃣ Normalize: remove trailing slash
 const API_URL = rawBase.replace(/\/$/, "");
 
-console.log("Using API base URL:",API_URL);
+// Debugging (only logs in dev mode)
+if (import.meta.env.DEV) {
+  console.log("🔗 Using API base URL:", API_URL);
+}
 
+// ✅ 3️⃣ Create reusable Axios instance
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
+  timeout: 10000, // Prevent hanging requests (10 seconds)
 });
 
-// ✅ Attach token for every request
-
+// ✅ 4️⃣ Add Authorization header if token exists
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("idToken");
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("idToken");
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,24 +31,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ Handle 401 errors properly
-
+// ✅ 5️⃣ Global response handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      console.warn("Unauthorized: Token may be expired or invalid.");
+    const status = error.response?.status;
 
-      //clear local auth
+    if (status === 401) {
+      console.warn("⚠️ Unauthorized: Token may be expired or invalid.");
+      localStorage.removeItem("accessToken");
       localStorage.removeItem("idToken");
       localStorage.removeItem("user");
-
-      //redirect to login page
-      window.location.href = "/login";
-      
-    } else if (error.response?.status === 404) {
-      console.warn("Endpoint not found:", error.config?.url);
+      window.location.href = "/login"; // Redirect to login
+    } else if (status === 404) {
+      console.warn("❌ API endpoint not found:", error.config?.url);
+    } else if (status >= 500) {
+      console.error("💥 Server error:", error.response?.data || error.message);
     }
+
     return Promise.reject(error);
   }
 );
