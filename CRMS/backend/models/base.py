@@ -43,6 +43,7 @@ class BaseModel:
         if is_new and not getattr(self, "created_at", None):
             self.created_at = now
         self.updated_at = now
+        return self.update_timestamps(is_new=is_new)
 
 
    

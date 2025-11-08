@@ -20,7 +20,7 @@ class FirestoreService:
         """Add a new document with automatic timestamps"""
         model.update_timestamps(is_new=True)
         data = model.to_dict()
-        doc_ref = self.collection.add(data)[1]
+        doc_ref, write_result = self.collection.add(data)
         model.id = doc_ref.id
         return model.id
 

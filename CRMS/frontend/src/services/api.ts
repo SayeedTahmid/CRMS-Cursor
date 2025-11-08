@@ -1,48 +1,71 @@
 // src/services/api.ts
 import axios from "axios";
+import { auth } from "./firebase"; // for optional silent refresh on 401
 
-// ✅ 1️⃣ Get base URL from .env or fallback
+// 1) Get base URL from .env or fallback
 const rawBase = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000/api";
-
-// ✅ 2️⃣ Normalize: remove trailing slash
+// 2) Normalize trailing slash
 const API_URL = rawBase.replace(/\/$/, "");
 
-// Debugging (only logs in dev mode)
-if (import.meta.env.DEV) {
-  console.log("🔗 Using API base URL:", API_URL);
-}
+if (import.meta.env.DEV) console.log("🔗 Using API base URL:", API_URL);
 
-// ✅ 3️⃣ Create reusable Axios instance
 const api = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 10000, // Prevent hanging requests (10 seconds)
+  timeout: 10000,
 });
 
-// ✅ 4️⃣ Add Authorization header if token exists
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken") || localStorage.getItem("idToken");
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// 3) Attach Firebase ID token (we only store 'idToken')
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("idToken");
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-// ✅ 5️⃣ Global response handling
+// 4) Optional: on 401, try a single silent token refresh
+let isRefreshing = false;
+
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (res) => res,
+  async (error) => {
     const status = error.response?.status;
+    const original = error.config;
 
+    if (status === 401 && !original?._retry) {
+      original._retry = true;
+
+      try {
+        if (!isRefreshing) {
+          isRefreshing = true;
+          const user = auth.currentUser;
+          if (user) {
+            const fresh = await user.getIdToken(true);
+            localStorage.setItem("idToken", fresh);
+          }
+          isRefreshing = false;
+        }
+        // Re-attach fresh token and retry the request
+        const freshToken = localStorage.getItem("idToken");
+        if (freshToken) {
+          original.headers = original.headers || {};
+          original.headers.Authorization = `Bearer ${freshToken}`;
+        }
+        return api(original);
+      } catch (e) {
+        // fall through to global handling
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // Global handling
     if (status === 401) {
-      console.warn("⚠️ Unauthorized: Token may be expired or invalid.");
-      localStorage.removeItem("accessToken");
+      console.warn("⚠️ Unauthorized: token invalid/expired. Redirecting to login.");
       localStorage.removeItem("idToken");
       localStorage.removeItem("user");
-      window.location.href = "/login"; // Redirect to login
+      window.location.href = "/login";
     } else if (status === 404) {
       console.warn("❌ API endpoint not found:", error.config?.url);
     } else if (status >= 500) {

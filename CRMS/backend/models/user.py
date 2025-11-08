@@ -1,6 +1,6 @@
 """User model for managing CRM users"""
+
 from typing import Optional, Dict, Any
-from datetime import datetime
 from models.base import BaseModel
 
 
@@ -48,14 +48,17 @@ class User(BaseModel):
         self.avatar_url: Optional[str] = kwargs.get("avatar_url")
 
         # Account status
-        self.is_active: bool = kwargs.get("is_active", True)
+        status_val = kwargs.get("status")
+        self.is_active: bool= kwargs.get("is_active",True)
+        if status_val is not None:
+            self.is_active = status_val =="active"
+            
         self.is_verified: bool = kwargs.get("is_verified", False)
         self.last_login: Optional[str] = kwargs.get("last_login")
 
         # Preferences and timestamps
         self.preferences: Dict[str, Any] = kwargs.get("preferences", {}) or {}
-        self.created_at: str = kwargs.get("created_at", datetime.utcnow().isoformat())
-        self.updated_at: str = kwargs.get("updated_at", datetime.utcnow().isoformat())
+       
 
     # ----------------------------------------------------------------------
 
@@ -64,31 +67,54 @@ class User(BaseModel):
         data = super().to_dict()
         data.update({
             "email": self.email,
-            "display_name": self.display_name,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
+            "displayName": self.display_name,
+            "firstName": self.first_name,
+            "lastName": self.last_name,
             "phone": self.phone,
             "role": self.role,
-            "tenant_id": self.tenant_id,
-            "firebase_uid": self.firebase_uid,
+            "tenantId": self.tenant_id,
+            "firebaseUid": self.firebase_uid,
             "department": self.department,
             "position": self.position,
-            "avatar_url": self.avatar_url,
-            "is_active": self.is_active,
-            "is_verified": self.is_verified,
-            "last_login": self.last_login,
+            "avatarUrl": self.avatar_url,
+            "isActive": self.is_active,
+            "isVerified": self.is_verified,
+            "lastLogin": self.last_login,
             "preferences": self.preferences,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         })
         return data
 
     @classmethod
     def from_dict(cls, doc_id: str, data: Dict[str, Any]) -> "User":
-        """Create a User instance from Firestore document"""
+        """Create a User instance from Firestore document
+           Firestore → Python object."""
         if not data:
             data = {}
-        return cls(**{**data, "id": doc_id})
+
+        # normalize camelCase to snake_case where needed
+        normalized = {
+            **data,
+            "id": doc_id,
+            "display_name": data.get("displayName"),
+            "first_name": data.get("firstName"),
+            "last_name": data.get("lastName"),
+            "tenant_id": data.get("tenantId"),
+            "firebase_uid": data.get("firebaseUid"),
+            "avatar_url": data.get("avatarUrl"),
+            "is_verified": data.get("isVerified"),
+            "last_login": data.get("lastLogin"),
+            # timestamps
+            "created_at": data.get("createdAt") or data.get("created_at"),
+            "updated_at": data.get("updatedAt") or data.get("updated_at"),
+        }
+
+        # status → is_active (if provided as string)
+        if "status" in data and "is_active" not in normalized:
+            normalized["is_active"] = data["status"] == "active"
+
+        return cls(**normalized)
 
     # ----------------------------------------------------------------------
 

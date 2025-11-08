@@ -3,9 +3,12 @@ from flask import Blueprint, request, jsonify
 from utils.firebase import get_db, verify_token
 from models.customer import Customer
 from api.auth import require_auth
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 customers_bp = Blueprint('customers', __name__)
 
+def _bad_id(x: str) -> bool:
+    return (not x) or x.strip().lower() in {"undefined", "null", "none"}
 
 def get_user_from_token():
     """Helper to get user from token"""
@@ -24,8 +27,7 @@ def list_customers():
     """List all customers with optional filtering"""
     try:
         db = get_db()
-        decoded_token = get_user_from_token()
-        user_id = decoded_token['uid']
+        user_id = request.user['uid']
         
         # Get user to determine tenant
         user_doc = db.collection('users').document(user_id).get()
@@ -36,7 +38,7 @@ def list_customers():
         tenant_id = user_data.get('tenant_id', 'default')
         
         # Build query
-        query = db.collection('customers').where('tenant_id', '==', tenant_id)
+        query = db.collection('customers').where(filter=FieldFilter('tenant_id', '==', tenant_id))
         
         # Apply filters
         status = request.args.get('status')
@@ -44,15 +46,15 @@ def list_customers():
         search = request.args.get('search')
         
         if status:
-            query = query.where('status', '==', status)
+         query = query.where(filter=FieldFilter('status', '==', status))
         if type_filter:
-            query = query.where('type', '==', type_filter)
+         query = query.where(filter=FieldFilter('type', '==', type_filter))
         
         # Execute query
         customers = []
         for doc in query.stream():
             customer = Customer.from_dict(doc.id, doc.to_dict())
-            customers.append(customer.to_dict())
+            customers.append(customer.to_dict(include_id=True))
         
         # Client-side search if search param provided
         if search:
@@ -80,18 +82,25 @@ def list_customers():
 @require_auth
 def get_customer(customer_id):
     """Get a single customer by ID"""
+    
     try:
-        db = get_db()
-        doc = db.collection('customers').document(customer_id).get()
+
+         if _bad_id(customer_id):
+          return jsonify ({'error': 'customer_id is required'}), 400
+
+         db = get_db()
+         doc = db.collection('customers').document(customer_id).get()
         
-        if not doc.exists:
+         if not doc.exists:
             return jsonify({'error': 'Customer not found'}), 404
         
-        customer = Customer.from_dict(doc.id, doc.to_dict())
-        return jsonify(customer.to_dict()), 200
+         customer = Customer.from_dict(doc.id, doc.to_dict())
+         return jsonify(customer.to_dict(include_id=True)), 200
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+         return jsonify({'error': str(e)}), 500
+        
+    
 
 
 @customers_bp.route('', methods=['POST'])
@@ -100,8 +109,7 @@ def create_customer():
     """Create a new customer"""
     try:
         db = get_db()
-        decoded_token = get_user_from_token()
-        user_id = decoded_token['uid']
+        user_id = request.user['uid']
         
         # Get user to determine tenant
         user_doc = db.collection('users').document(user_id).get()
@@ -123,12 +131,12 @@ def create_customer():
             return jsonify({'error': 'Invalid customer data'}), 400
         
         # Add to Firestore
-        doc_ref = db.collection('customers').add(customer.to_dict())
-        customer.id = doc_ref[1].id
+        doc_ref, _ = db.collection('customers').add(customer.to_dict())
+        customer.id = doc_ref.id
         
         return jsonify({
             'message': 'Customer created successfully',
-            'customer': customer.to_dict()
+            'customer': customer.to_dict(include_id=True)
         }), 201
         
     except Exception as e:
@@ -140,6 +148,10 @@ def create_customer():
 def update_customer(customer_id):
     """Update an existing customer"""
     try:
+
+        if _bad_id(customer_id):
+           return jsonify ({'error': 'customer_id is required'}), 400
+
         db = get_db()
         customer_ref = db.collection('customers').document(customer_id)
         
@@ -163,7 +175,7 @@ def update_customer(customer_id):
         
         return jsonify({
             'message': 'Customer updated successfully',
-            'customer': customer.to_dict()
+            'customer': customer.to_dict(include_id=True)
         }), 200
         
     except Exception as e:
@@ -175,7 +187,12 @@ def update_customer(customer_id):
 def delete_customer(customer_id):
     """Delete a customer"""
     try:
+         
+        if _bad_id(customer_id):
+            return jsonify ({'error': 'customer_id is required'}), 400
+        
         db = get_db()
+
         customer_ref = db.collection('customers').document(customer_id)
         
         doc = customer_ref.get()
@@ -196,11 +213,15 @@ def delete_customer(customer_id):
 def get_customer_logs(customer_id):
     """Get all logs for a customer"""
     try:
+
+        if _bad_id(customer_id):
+            return jsonify ({'error': 'customer_id is required'}), 400
+
         db = get_db()
         
         # Get logs for this customer
         logs = []
-        query = db.collection('logs').where('customer_id', '==', customer_id)
+        query = db.collection('logs').where(filter=FieldFilter('customer_id', '==', customer_id))
         
         for doc in query.stream():
             log_data = doc.to_dict()
@@ -223,11 +244,15 @@ def get_customer_logs(customer_id):
 def get_customer_complaints(customer_id):
     """Get all complaints for a customer"""
     try:
+
+        if _bad_id(customer_id):
+            return jsonify ({'error': 'customer_id is required'}), 400
+
         db = get_db()
         
         # Get complaints for this customer
         complaints = []
-        query = db.collection('complaints').where('customer_id', '==', customer_id)
+        query = db.collection('complaints').where(filter=FieldFilter('customer_id', '==', customer_id))
         
         for doc in query.stream():
             complaint_data = doc.to_dict()

@@ -1,0 +1,36 @@
+// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() { return request.auth != null; }
+    function belongsToTenant(tid) { return isAuthenticated() && request.auth.token.tenant_id == tid; }
+    function hasRole(role) { return isAuthenticated() && request.auth.token.role == role; }
+
+    match /customers/{id} {
+      allow read: if belongsToTenant(resource.data.tenant_id);
+      allow create: if belongsToTenant(request.resource.data.tenant_id) && (hasRole('admin') || hasRole('manager') || hasRole('sales_rep'));
+      allow update: if belongsToTenant(resource.data.tenant_id) && (hasRole('admin') || hasRole('manager'));
+      allow delete: if belongsToTenant(resource.data.tenant_id) && hasRole('admin');
+    }
+
+    match /logs/{id} {
+      allow read: if belongsToTenant(resource.data.tenant_id);
+      allow create: if belongsToTenant(request.resource.data.tenant_id) && isAuthenticated();
+      allow update, delete: if belongsToTenant(resource.data.tenant_id) &&
+        (resource.data.createdBy == request.auth.uid || hasRole('admin'));
+    }
+
+    match /complaints/{id} {
+      allow read: if belongsToTenant(resource.data.tenant_id);
+      allow create: if belongsToTenant(request.resource.data.tenant_id) && isAuthenticated();
+      allow update: if belongsToTenant(resource.data.tenant_id) && (hasRole('admin') || hasRole('support') || hasRole('manager'));
+      allow delete: if belongsToTenant(resource.data.tenant_id) && hasRole('admin');
+    }
+
+    match /users/{id} {
+      allow read: if belongsToTenant(resource.data.tenant_id) && (hasRole('admin') || hasRole('manager'));
+      allow update, delete: if belongsToTenant(resource.data.tenant_id) && hasRole('admin');
+      allow create: if belongsToTenant(request.resource.data.tenant_id) && hasRole('admin');
+    }
+  }
+}

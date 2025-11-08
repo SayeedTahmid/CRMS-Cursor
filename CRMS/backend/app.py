@@ -25,18 +25,16 @@ app = Flask(__name__)
 # Configure CORS properly for all local and dev environments
 CORS(app, resources={r"/*": {
     "origins": [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://192.168.1.4:5174",
-        "http://192.168.1.4:5173",
-        "http://192.168.1.4:5175"  # important: your Vite dev IP
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "http://localhost:5174", "http://127.0.0.1:5174",
+        "http://192.168.1.2:5173", "http://192.168.1.2:5174", "http://192.168.1.2:5175",
+        "http://192.168.1.4:5173", "http://192.168.1.4:5174", "http://192.168.1.4:5175"
     ],
     "allow_headers": ["Content-Type", "Authorization"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "supports_credentials": True
 }})
+
 
 # Initialize Flask-RESTful API
 api = Api(app)
@@ -92,7 +90,16 @@ app.register_blueprint(customers_bp, url_prefix='/api/customers')
 app.register_blueprint(logs_bp, url_prefix='/api/logs')
 
 
+from werkzeug.exceptions import HTTPException
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    code = 500
+    if isinstance(e, HTTPException):
+        code = e.code
+    return jsonify({"error": str(e), "code": code}), code
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = app.config['DEBUG']
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False)

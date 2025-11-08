@@ -25,7 +25,7 @@ export async function signIn(email: string, password: string): Promise<UserData>
     localStorage.setItem("idToken", idToken);
 
     // verify with backend
-    await api.post("/auth/verify", { idToken });
+    //await api.post("/auth/verify", { idToken });
 
     return {
       uid: user.uid,
@@ -43,14 +43,16 @@ export async function register(email: string, password: string, displayName?: st
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    const idToken = await user.getIdToken();
-
+    
+    // Create server-side profile
     await api.post("/auth/register", {
       email,
       password,
       display_name: displayName || email,
     });
 
+    // Store token after Firebase created the user
+    const idToken = await user.getIdToken();
     localStorage.setItem("idToken", idToken);
 
     return {
@@ -78,13 +80,23 @@ export function getCurrentUser(): UserData | null {
 
 /** ---- CHECK AUTH STATUS ---- */
 export async function isAuthenticated(): Promise<boolean> {
-  const token = localStorage.getItem("idToken");
-  if (!token) return false;
+  const user =auth.currentUser;
+  if (!user ) return false;
 
   try {
+    // Refresh token silently and keep it in localStorage
+    const fresh = await user.getIdToken(true);
+    localStorage.setItem("idToken",fresh);
+
+    // ✅ Server-side check (optional): GET /auth/user with Bearer header
+    // If this 200s, you're authenticated. If it 401s, interceptor will handle redirect.
+    await api.get("/auth/user");
+    return true;
+
     // Verify with backend if token is valid
-    const res = await api.post("/auth/verify", { idToken: token });
-    return res.data?.authenticated === true;
+    //const res = await api.post("/auth/verify", { idToken: token });
+    //return res.data?.authenticated === true;
+
   } catch (err) {
     console.warn("Auth check failed:", err);
     localStorage.removeItem("idToken");
@@ -98,6 +110,7 @@ export async function signOutUser(): Promise<void> {
   try {
     await signOut(auth);
     localStorage.removeItem("idToken");
+    localStorage.removeItem("user");
     console.log("User logged out successfully");
   } catch (err) {
     console.error("Logout failed:", err);

@@ -9,26 +9,26 @@ const Customers: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [total, setTotal] = useState<number>(0); // ✅ new state for total count
+  const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadCustomers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadCustomers = async () => {
     try {
       const data = await customerService.getAll({ search });
       setCustomers(data.customers);
-      setTotal(data.total || data.customers?.length || 0); // ✅ add this line
+      setTotal(data.total || data.customers?.length || 0);
     } catch (error) {
       console.error('Error loading customers:', error);
     } finally {
       setLoading(false);
     }
   };
-  
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,15 +63,13 @@ const Customers: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-            <h2 className="text-3xl font-bold text-text-primary">
-               Customers
-              <span className="text-text-secondary text-base ml-2">
-                ({total})
-             </span>
-           </h2>
+              <h2 className="text-3xl font-bold text-text-primary">
+                Customers
+                <span className="text-text-secondary text-base ml-2">({total})</span>
+              </h2>
               <p className="text-text-secondary mt-1">Manage your customer relationships</p>
             </div>
-            <button 
+            <button
               onClick={() => navigate('/customers/new')}
               className="flex items-center px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors"
             >
@@ -102,39 +100,53 @@ const Customers: React.FC = () => {
             <UserGroupIcon className="w-16 h-16 mx-auto text-text-secondary mb-4" />
             <h3 className="text-xl font-semibold text-text-primary mb-2">No customers yet</h3>
             <p className="text-text-secondary mb-4">Get started by adding your first customer</p>
-            <button className="px-6 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors">
+            {/* ✅ now navigates to create form */}
+            <button
+              onClick={() => navigate('/customers/new')}
+              className="px-6 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors"
+            >
               Add Customer
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {customers.map((customer) => (
-              <Link key={customer.id} to={`/customers/${customer.id}`}>
-                <div className="bg-dark-bg-card rounded-lg p-6 border border-border hover:border-primary-purple transition-colors cursor-pointer">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-text-primary">{customer.name}</h3>
-                      <p className="text-sm text-text-secondary">{customer.company || 'No company'}</p>
+            {customers.map((c) => {
+              // ✅ normalize id for key + link (handles id/docId/_id)
+              const id = (c as any).id ?? (c as any).docId ?? (c as any)._id;
+              return (
+                <Link key={id} to={`/customers/${id}`}>
+                  <div className="bg-dark-bg-card rounded-lg p-6 border border-border hover:border-primary-purple transition-colors cursor-pointer">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-text-primary">
+                          {c.name ?? (c as any).email ?? (c as any).company ?? id}
+                        </h3>
+                        <p className="text-sm text-text-secondary">{(c as any).company || 'No company'}</p>
+                      </div>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded ${
+                          (c as any).status === 'active'
+                            ? 'bg-success/20 text-success'
+                            : (c as any).status === 'inactive'
+                            ? 'bg-warning/20 text-warning'
+                            : 'bg-error/20 text-error'
+                        }`}
+                      >
+                        {(c as any).status}
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${
-                      customer.status === 'active' ? 'bg-success/20 text-success' :
-                      customer.status === 'inactive' ? 'bg-warning/20 text-warning' :
-                      'bg-error/20 text-error'
-                    }`}>
-                      {customer.status}
-                    </span>
+                    <div className="space-y-2">
+                      {(c as any).email && (
+                        <p className="text-sm text-text-secondary">📧 {(c as any).email}</p>
+                      )}
+                      {(c as any).phone && (
+                        <p className="text-sm text-text-secondary">📱 {(c as any).phone}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {customer.email && (
-                      <p className="text-sm text-text-secondary">📧 {customer.email}</p>
-                    )}
-                    {customer.phone && (
-                      <p className="text-sm text-text-secondary">📱 {customer.phone}</p>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </main>
@@ -143,4 +155,3 @@ const Customers: React.FC = () => {
 };
 
 export default Customers;
-

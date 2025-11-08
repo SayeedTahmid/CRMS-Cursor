@@ -1,8 +1,10 @@
 """Log API endpoints"""
 from flask import Blueprint, request, jsonify
+from google.cloud.firestore_v1 import FieldFilter
 from utils.firebase import get_db, verify_token
 from models.log import Log
 from api.auth import require_auth
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 logs_bp = Blueprint('logs', __name__)
 
@@ -25,7 +27,7 @@ def list_logs():
     try:
         db = get_db()
         decoded_token = get_user_from_token()
-        user_id = decoded_token['uid']
+        user_id = request.user['uid']
         
         # Get user to determine tenant
         user_doc = db.collection('users').document(user_id).get()
@@ -36,16 +38,16 @@ def list_logs():
         tenant_id = user_data.get('tenant_id', 'default')
         
         # Build query
-        query = db.collection('logs').where('tenant_id', '==', tenant_id)
+        query = db.collection('logs').where(filter=FieldFilter('tenant_id', '==', tenant_id))
         
         # Apply filters
         customer_id = request.args.get('customer_id')
         log_type = request.args.get('type')
         
         if customer_id:
-            query = query.where('customer_id', '==', customer_id)
+            query = query.where(filter=FieldFilter('customer_id', '==', customer_id))
         if log_type:
-            query = query.where('type', '==', log_type)
+            query = query.where(filter=FieldFilter('type', '==', log_type))
         
         # Execute query
         logs = []
@@ -76,6 +78,9 @@ def get_log(log_id):
         if not doc.exists:
             return jsonify({'error': 'Log not found'}), 404
         
+        if not log_id or log_id.strip().lower() in {"undefined","null","none"}:
+            return jsonify({'error': 'log_id is required'}), 400
+
         log = Log.from_dict(doc.id, doc.to_dict())
         return jsonify(log.to_dict()), 200
         
@@ -90,7 +95,7 @@ def create_log():
     try:
         db = get_db()
         decoded_token = get_user_from_token()
-        user_id = decoded_token['uid']
+        user_id = request.user['uid']
         
         # Get user to determine tenant
         user_doc = db.collection('users').document(user_id).get()
@@ -112,7 +117,7 @@ def create_log():
             return jsonify({'error': 'Invalid log data'}), 400
         
         # Add to Firestore
-        doc_ref = db.collection('logs').add(log.to_dict())
+        doc_ref, _ = db.collection('logs').add(log.to_dict())
         log.id = doc_ref[1].id
         
         # Update customer's last contact date
@@ -179,6 +184,9 @@ def delete_log(log_id):
         if not doc.exists:
             return jsonify({'error': 'Log not found'}), 404
         
+        if not log_id or log_id.strip().lower() in {"undefined","null","none"}:
+            return jsonify({'error': 'log_id is required'}), 400
+
         # Delete the log
         log_ref.delete()
         
