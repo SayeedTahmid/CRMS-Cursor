@@ -9,6 +9,8 @@ import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import CustomerForm from "./pages/CustomerForm";
+import Complaints from "./pages/Complaints";
+import LogsPage from "./pages/Logs";
 
 /** ✅ Protected route wrapper */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -89,6 +91,26 @@ function App() {
             element={
               <ProtectedRoute>
                 <CustomerForm />
+              </ProtectedRoute>
+            }
+          />
+
+          {/*Complaints */}
+          <Route
+            path="/complaints"
+            element={
+              <ProtectedRoute>
+                <Complaints/>
+              </ProtectedRoute>
+            }
+          />
+
+          {/*Logs*/}
+          <Route
+            path="/logs"
+            element={
+              <ProtectedRoute>
+                <LogsPage/>
               </ProtectedRoute>
             }
           />

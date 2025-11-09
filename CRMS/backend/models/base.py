@@ -39,11 +39,12 @@ class BaseModel:
     
     def update_timestamps(self, is_new=False):
         """Automatically manage created_at and updated_at fields"""
+        from datetime import datetime
         now = datetime.utcnow()
         if is_new and not getattr(self, "created_at", None):
             self.created_at = now
         self.updated_at = now
-        return self.update_timestamps(is_new=is_new)
+        return self
 
 
    

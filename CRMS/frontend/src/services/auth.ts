@@ -7,6 +7,7 @@ import {
 import api from "./api";
 import { auth } from "./firebase"; // ✅ make sure path is correct
 
+
 /** ---- USER DATA INTERFACE ---- */
 export interface UserData {
   uid: string;

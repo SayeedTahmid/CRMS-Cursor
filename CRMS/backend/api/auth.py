@@ -6,15 +6,43 @@ from functools import wraps
 from utils.firebase import verify_token, get_db, get_user_by_email, create_user
 from models.user import User
 from datetime import datetime
+from services.user_services import UserService
+from google.cloud import firestore
 
 auth_bp = Blueprint("auth", __name__)
 
 
+def _extract_role(user: dict) -> str:
+    if not user:
+        return ""
+    return (user.get("role")
+            or (user.get("claims") or {}).get("role")
+            or "").lower()
+
+def require_role(*allowed_roles):
+    """
+    Usage:
+        @require_auth
+        @require_role("admin")                       # one role
+        @require_role("admin", "manager", "support") # any of these
+    """
+    allowed = {r.lower() for r in allowed_roles}
+
+    def decorator(fn):
+        @wraps(fn)
+        def wrapped(*args, **kwargs):
+            user = getattr(request, "user", {}) or {}
+            role = _extract_role(user)
+            if not role or role not in allowed:
+                return jsonify({"error": "Forbidden: insufficient role"}), 403
+            return fn(*args, **kwargs)
+        return wrapped
+    return decorator
 # ==============================================================
 # 🔒 Middleware: Require authentication
 # ==============================================================
 def require_auth(f):
-    """Decorator to require Firebase ID token authentication"""
+    """Decorator to require Firebase ID token authentication and enrich request.user with role/tenant."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get("Authorization")
@@ -22,14 +50,30 @@ def require_auth(f):
             return jsonify({"authenticated": False, "error": "Authentication required"}), 401
 
         id_token = auth_header.split("Bearer ")[1]
-        decoded_token = verify_token(id_token)
+        decoded_token = verify_token(id_token) or {}
         if not decoded_token:
             return jsonify({"authenticated": False, "error": "Invalid token"}), 401
+
+        # 🔎 Enrich with role/tenant from users/{uid} for routes that depend on it
+        try:
+            uid = decoded_token.get("uid")
+            if uid:
+                db = get_db()
+                snap = db.collection("users").document(uid).get()
+                if snap.exists:
+                    user_doc = snap.to_dict() or {}
+                    # Prefer explicit doc values; keep any existing token values
+                    decoded_token["role"] = user_doc.get("role") or decoded_token.get("role")
+                    decoded_token["tenant_id"] = user_doc.get("tenant_id") or decoded_token.get("tenant_id")
+        except Exception:
+            # Don't block if enrichment fails; downstream can still work with decoded_token
+            pass
 
         request.user = decoded_token
         return f(*args, **kwargs)
 
     return decorated_function
+
 
 
 # ==============================================================
@@ -38,8 +82,8 @@ def require_auth(f):
 @auth_bp.route("/verify", methods=["POST"])
 def verify():
     """
-    Verify Firebase ID token → return authenticated user info.
-    If Firestore user is missing, create minimal placeholder.
+    Verify Firebase ID token → ensure/normalize users/{uid} in Firestore
+    and return the normalized user (PRD: tenant isolation + RBAC).
     """
     try:
         data = request.get_json() or {}
@@ -47,49 +91,24 @@ def verify():
         if not id_token:
             return jsonify({"authenticated": False, "error": "ID token required"}), 400
 
-        decoded_token = verify_token(id_token)
+        decoded_token = verify_token(id_token) 
         if not decoded_token:
             return jsonify({"authenticated": False, "error": "Invalid or expired token"}), 401
 
-        db = get_db()
-        uid = decoded_token.get("uid")
-        if not uid:
-            return jsonify({"authenticated": False, "error": "Token missing UID"}), 401
+        # ✅ Upsert + normalize user document; returns the current user state
+        user_service = UserService()
+        user_doc = user_service.upsert_from_decoded_token(decoded_token)
 
-        user_ref = db.collection("users").document(uid)
-        user_doc = user_ref.get()
-
-        # If user doesn’t exist → create minimal placeholder profile
-        if not user_doc.exists:
-            minimal_user = {
-                "firebase_uid": uid,
-                "email": decoded_token.get("email"),
-                "display_name": decoded_token.get("name") or decoded_token.get("email"),
-                "role": "viewer",
-                "tenant_id": "default",
-                "is_active": True,
-                "is_verified": True,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
-                "created_by_source": "auto_verify"
-            }
-            user_ref.set(minimal_user)
-            return jsonify({
-                "authenticated": True,
-                "user": minimal_user,
-                "message": "User auto-created in Firestore"
-            }), 201
-
-        # Otherwise return the existing user
-        user_data = User.from_dict(user_doc.id, user_doc.to_dict())
+        # Response mirrors what your frontend AuthContext expects
         return jsonify({
             "authenticated": True,
-            "user": user_data.to_dict()
+            "user": user_doc
         }), 200
 
     except Exception as e:
         current_app.logger.exception("Error in /verify")
         return jsonify({"authenticated": False, "error": str(e)}), 500
+
 
 # ==============================================================
 # 🩺 Health / Status Check
@@ -141,7 +160,11 @@ def register():
             is_active=True,
             is_verified=False
         )
-        db.collection("users").document(firebase_user.uid).set(user.to_dict())
+
+        data = user.to_dict()
+        data["created_at"]=firestore.SERVER_TIMESTAMP
+        data["updated_at"] = firestore.SERVER_TIMESTAMP
+        db.collection("users").document(firebase_user.uid).set(data)
 
         return jsonify({
             "message": "User registered successfully",
@@ -198,7 +221,8 @@ def update_user():
             "phone", "department", "position", "preferences"
         ]
         update_data = {f: data[f] for f in allowed_fields if f in data}
-        update_data["updated_at"] = datetime.utcnow().isoformat()
+        update_data["updated_at"] = firestore.SERVER_TIMESTAMP
+
 
         user_ref.update(update_data)
         updated_doc = user_ref.get()

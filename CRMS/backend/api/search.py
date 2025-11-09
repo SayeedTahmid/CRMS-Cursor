@@ -1,10 +1,11 @@
 # backend/api/search.py
 from flask import Blueprint, request, jsonify
 from google.cloud.firestore_v1.base_query import FieldFilter
-from .auth import require_auth, current_user
-from .db import get_db
+from .auth import require_auth
+from .helpers import current_user
+from utils.firebase import get_db
 
-search_bp = Blueprint("search", __name__, url_prefix="/api")
+search_bp = Blueprint("search", __name__)
 
 @search_bp.route("/search", methods=["GET"])
 @require_auth

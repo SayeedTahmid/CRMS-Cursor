@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import useMetrics from '../hooks/useMetrics'; // ⬅️ NEW
 import {
   UserGroupIcon,
   ClipboardDocumentListIcon,
@@ -10,6 +11,13 @@ import {
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { data, loading, error, reload } = useMetrics(); // ⬅️ NEW
+
+  // Map API -> tiles (fallbacks so UI never breaks)
+  const totalCustomers = data?.active_customers ?? 0;     // tile text says "Total Customers" subtitle "Active customers"
+  const openComplaints = data?.open_complaints ?? 0;
+  const recentLogs = data?.recent_logs_7d ?? 0;
+  const performance = data?.performance_month ?? 0;
 
   return (
     <div className="min-h-screen bg-dark-bg">
@@ -35,9 +43,20 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-text-primary">Dashboard</h2>
-          <p className="text-text-secondary mt-1">Manage your customers and track interactions</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-text-primary">Dashboard</h2>
+            <p className="text-text-secondary mt-1">Manage your customers and track interactions</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {loading && <span className="text-text-secondary text-sm">Loading…</span>}
+            {error && (
+              <span className="text-red-400 text-sm">
+                Failed to load metrics
+                <button className="ml-2 underline" onClick={reload}>Retry</button>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -45,30 +64,34 @@ const Dashboard: React.FC = () => {
           <StatCard
             icon={<UserGroupIcon className="w-8 h-8" />}
             title="Total Customers"
-            value="0"
+            value={String(totalCustomers)}
             subtitle="Active customers"
             color="primary-purple"
+            action={<Link to="/customers?status=active" className="text-sm text-primary-purple underline">View</Link>}
           />
           <StatCard
             icon={<ClipboardDocumentListIcon className="w-8 h-8" />}
             title="Open Complaints"
-            value="0"
+            value={String(openComplaints)}
             subtitle="In progress"
             color="warning"
+            action={<Link to="/complaints?status=in_progress" className="text-sm text-primary-purple underline">View</Link>}
           />
           <StatCard
             icon={<EnvelopeIcon className="w-8 h-8" />}
             title="Recent Logs"
-            value="0"
+            value={String(recentLogs)}
             subtitle="Last 7 days"
             color="success"
+            action={<Link to="/logs?range=7d" className="text-sm text-primary-purple underline">View</Link>}
           />
           <StatCard
             icon={<ChartBarIcon className="w-8 h-8" />}
             title="Performance"
-            value="---"
+            value={loading ? '---' : String(performance)}
             subtitle="This month"
             color="secondary-purple"
+            action={<Link to="/logs?range=month" className="text-sm text-primary-purple underline">View</Link>}
           />
         </div>
 
@@ -98,9 +121,10 @@ interface StatCardProps {
   value: string;
   subtitle: string;
   color: string;
+  action?: React.ReactNode;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color }) => {
+const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color, action }) => {
   return (
     <div className="bg-dark-bg-card rounded-lg p-6 border border-border">
       <div className="flex items-center justify-between">
@@ -108,6 +132,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color
           <p className="text-text-secondary text-sm font-medium">{title}</p>
           <p className="text-3xl font-bold text-text-primary mt-2">{value}</p>
           <p className="text-text-secondary text-xs mt-1">{subtitle}</p>
+          {action ? <div className="mt-2">{action}</div> : null}
         </div>
         <div className={`text-${color}`}>
           {icon}
@@ -116,6 +141,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color
     </div>
   );
 };
+
 
 interface QuickActionCardProps {
   title: string;
@@ -136,5 +162,3 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({ title, description, l
 };
 
 export default Dashboard;
-
-

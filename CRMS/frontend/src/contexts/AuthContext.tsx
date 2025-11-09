@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    */
   const verifyTokenWithBackend = async (firebaseUser: User): Promise<void> => {
     try {
-      const idToken = await firebaseUser.getIdToken();
+      const idToken = await firebaseUser.getIdToken(true);
       const response = await axios.post(`${API_BASE}/auth/verify`, { idToken });
 
       if (response.data?.authenticated) {
@@ -97,7 +97,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(false);
         return;
       }
-  
+  // ⭐ Always cache a token immediately so Axios has something to send
+      {
+       const t = await firebaseUser.getIdToken(/* forceRefresh */ false);
+       localStorage.setItem("idToken", t);
+      }
       // If backend not yet ready, wait and retry instead of logging out
       if (!backendReady) {
         console.warn("⏳ Waiting for backend before verifying user...");
@@ -113,7 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error("❌ Backend unavailable after waiting, skipping verification.");
           setLoading(false);
         };
-        waitForBackend();
+        await waitForBackend();
         return;
       }
   

@@ -127,6 +127,12 @@ function CustomerDetail() {
                 {customer.name ?? (customer as any).email ?? (customer as any).company ?? (customer as any).id}
               </h2>
               <p className="text-text-secondary">{(customer as any).company || 'No company'}</p>
+              <Link
+                 to={`/complaints?customerId=${encodeURIComponent((customer as any).id ?? "")}`}
+                  className="inline-flex items-center text-sm text-primary-purple hover:text-secondary-purple mt-2"
+              >
+                  View complaints for this customer
+              </Link>
             </div>
             {(customer as any).status && (
               <span

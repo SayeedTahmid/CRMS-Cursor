@@ -62,18 +62,11 @@ api.interceptors.response.use(
 
     // Global handling
     if (status === 401) {
-      console.warn("⚠️ Unauthorized: token invalid/expired. Redirecting to login.");
-      localStorage.removeItem("idToken");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
-    } else if (status === 404) {
-      console.warn("❌ API endpoint not found:", error.config?.url);
-    } else if (status >= 500) {
-      console.error("💥 Server error:", error.response?.data || error.message);
+      // If Firebase session is gone, let caller decide navigation; do not signOut here.
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);
   }
 );
-
 export default api;

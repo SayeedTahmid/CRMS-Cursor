@@ -84,10 +84,23 @@ def api_health():
 from api.auth import auth_bp
 from api.customers import customers_bp
 from api.logs import logs_bp
+from api.complaints import complaints_bp
+from api.search import search_bp
+from api.users import users_bp
+from api.metrics import metrics_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(customers_bp, url_prefix='/api/customers')
 app.register_blueprint(logs_bp, url_prefix='/api/logs')
+app.register_blueprint(complaints_bp, url_prefix='/api/complaints')
+app.register_blueprint(search_bp, url_prefix='/api/search')
+app.register_blueprint(users_bp, url_prefix='/api/users')
+app.register_blueprint(metrics_bp, url_prefix="/api/metrics")
+
+print("\n=== Registered routes ===")
+for rule in app.url_map.iter_rules():
+    print(f"{','.join(sorted(rule.methods)):<22} {rule.rule}")
+print("=========================\n")
 
 
 from werkzeug.exceptions import HTTPException
