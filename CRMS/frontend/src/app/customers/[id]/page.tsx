@@ -1,24 +1,44 @@
+// frontend/src/app/customers/[id]/page.tsx
+
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { customerService } from "@/services/customers";
 import useCustomerLogs from "@/hooks/useCustomerLogs";
 import useCustomerComplaints from "@/hooks/useCustomerComplaints";
 
 export default function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const customerId = params.id;
+  const customerId = params?.id;
   const [customer, setCustomer] = useState<any>(null);
   const [loadingCustomer, setLoadingCustomer] = useState(true);
   const [tab, setTab] = useState<"logs" | "complaints">("logs");
 
-  const logs = useCustomerLogs(customerId, { page: 1, limit: 10 });
-  const complaints = useCustomerComplaints(customerId, { page: 1, limit: 10 });
+  const logs = useCustomerLogs(customerId || "", { page: 1, limit: 10 });
+  const complaints = useCustomerComplaints(customerId || "", { page: 1, limit: 10 });
 
   useEffect(() => {
+    if (!customerId || customerId === "undefined") {
+      console.warn("CustomerDetailPage: Invalid customer ID:", customerId);
+      setLoadingCustomer(false);
+      return;
+    }
+    console.log("CustomerDetailPage: Loading customer with ID:", customerId);
     setLoadingCustomer(true);
     customerService
       .getById(customerId)
-      .then(setCustomer)
+      .then((data) => {
+        console.log("CustomerDetailPage: Customer loaded successfully:", data);
+        setCustomer(data);
+      })
+      .catch((err) => {
+        console.error("CustomerDetailPage: Error loading customer:", err);
+        console.error("CustomerDetailPage: Error details:", {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
+        setCustomer(null);
+      })
       .finally(() => setLoadingCustomer(false));
   }, [customerId]);
 
@@ -74,13 +94,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <div className="flex gap-2">
                 <button
                   className="border rounded px-3 py-2"
-                  onClick={() => logs.setParams((p) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}
+                  onClick={() => logs.setParams((p: any) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}
                 >
                   Prev
                 </button>
                 <button
                   className="border rounded px-3 py-2"
-                  onClick={() => logs.setParams((p) => ({ ...p, page: (p.page ?? 1) + 1 }))}
+                  onClick={() => logs.setParams((p: any) => ({ ...p, page: (p.page ?? 1) + 1 }))}
                 >
                   Next
                 </button>
@@ -111,13 +131,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
               <div className="flex gap-2">
                 <button
                   className="border rounded px-3 py-2"
-                  onClick={() => complaints.setParams((p) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}
+                  onClick={() => complaints.setParams((p: any) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}
                 >
                   Prev
                 </button>
                 <button
                   className="border rounded px-3 py-2"
-                  onClick={() => complaints.setParams((p) => ({ ...p, page: (p.page ?? 1) + 1 }))}
+                  onClick={() => complaints.setParams((p: any) => ({ ...p, page: (p.page ?? 1) + 1 }))}
                 >
                   Next
                 </button>

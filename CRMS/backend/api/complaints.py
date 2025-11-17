@@ -1,39 +1,27 @@
 # backend/api/complaints.py
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from .auth import require_auth
-from .helpers import current_user 
-from utils.firebase import get_db  # your Firestore client factory
+from api.auth import require_auth, require_permission,require_role
+from utils.firebase import get_db
+from utils.rbac import SALES_REP
 
 complaints_bp = Blueprint("complaints", __name__)
 
-def _bad(s): 
+def _bad(s):
     return not s or not str(s).strip() or str(s).strip().lower() in {"undefined", "null", "none"}
-   
-def _uid_and_tenant():
-    u = current_user() or {}
-    return u.get("uid"), u.get("tenant_id")
 
-def _ensure_same_tenant(doc, tenant_id):
-    if not doc.exists:
-        return False, ("Not found", 404)
-    data = doc.to_dict() or {}
-    if data.get("tenant_id") != tenant_id:
-        return False, ("Forbidden: cross-tenant access", 403)
-    return True, data
-
-# -----------------------------------------------------------------------------
-# NEW: List complaints (tenant scoped)  GET /api/complaints?customerId=&status=&search=&page=&pageSize=
-# -----------------------------------------------------------------------------
+# ---------------------------
+# List complaints
+# ---------------------------
 @complaints_bp.route("", methods=["GET"])
 @require_auth
+@require_permission("complaints", "read")
 def list_complaints():
     try:
         db = get_db()
-        uid, tenant_id = _uid_and_tenant()
-        if _bad(tenant_id):
-            return jsonify({"error": "Missing tenant_id on user"}), 401
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
 
         customer_id = request.args.get("customerId")
         status = request.args.get("status")
@@ -45,31 +33,74 @@ def list_complaints():
             page, page_size = 1, 20
 
         q = db.collection("complaints").where(filter=FieldFilter("tenant_id", "==", tenant_id))
+
+        # Sales Rep -> own complaints only
+        if request.user.get("role") == SALES_REP:
+            q = q.where(filter=FieldFilter("created_by", "==", uid))
+
         if customer_id:
             q = q.where(filter=FieldFilter("customer_id", "==", customer_id))
         if status:
             q = q.where(filter=FieldFilter("status", "==", status))
 
-        # Order newest first by created_at if present; otherwise Firestore default
         try:
-            from google.cloud import firestore
             q = q.order_by("created_at", direction=firestore.Query.DESCENDING)
-        except Exception:
-            pass
+        except Exception as order_error:
+            # If ordering fails (missing index), continue without order
+            print(f"Warning: Could not order complaints by created_at: {order_error}")
 
-        offset = (page - 1) * page_size
-        q = q.offset(offset).limit(page_size)
+        # Apply pagination
+        # Note: offset() requires an index when combined with where() and order_by()
+        # If offset fails, fall back to limit-only pagination
+        try:
+            offset = (page - 1) * page_size
+            if offset > 0:
+                q = q.offset(offset)
+            q = q.limit(page_size)
+        except Exception as pagination_error:
+            # If offset fails (missing index), use limit only (page 1 only)
+            print(f"Warning: Offset pagination failed, using limit only: {pagination_error}")
+            if page > 1:
+                # Can't paginate without offset, return empty for pages > 1
+                return jsonify({
+                    "complaints": [],
+                    "page": page,
+                    "pageSize": page_size,
+                    "hasMore": False,
+                    "total": 0,
+                    "message": "Pagination requires Firestore index. Showing first page only."
+                }), 200
+            q = q.limit(page_size)
 
         items = []
-        for doc in q.stream():
-            d = doc.to_dict() or {}
-            items.append({"id": doc.id, **d})
+        try:
+            for doc in q.stream():
+                try:
+                    d = doc.to_dict() or {}
+                    items.append({"id": doc.id, **d})
+                except Exception as doc_error:
+                    print(f"Error processing complaint {doc.id}: {doc_error}")
+                    continue  # Skip malformed documents
+        except Exception as stream_error:
+            error_str = str(stream_error)
+            if "requires an index" in error_str:
+                return jsonify({
+                    "error": "Firestore index required",
+                    "message": "The query requires a composite index. Please create it in Firebase Console.",
+                    "complaints": [],
+                    "page": page,
+                    "pageSize": page_size,
+                    "hasMore": False,
+                    "total": 0
+                }), 400
+            raise
 
+        # Client-side search if search param provided
         if search:
             items = [
                 c for c in items
-                if search in str(c.get("title", "")).lower()
-                or search in str(c.get("description", "")).lower()
+                if search in (c.get("title","") or "").lower()
+                or search in (c.get("description","") or "").lower()
             ]
 
         has_more = len(items) == page_size
@@ -81,40 +112,47 @@ def list_complaints():
             "total": len(items)
         }), 200
     except Exception as e:
+        print(f"Error in list_complaints: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-# -----------------------------------------------------------------------------
-# NEW: Get one complaint (tenant scoped)  GET /api/complaints/<complaint_id>
-# -----------------------------------------------------------------------------
+# ---------------------------
+# Get complaint
+# ---------------------------
 @complaints_bp.route("/<complaint_id>", methods=["GET"])
 @require_auth
+@require_permission("complaints", "read")
 def get_complaint(complaint_id):
     try:
         if _bad(complaint_id):
             return jsonify({"error": "complaint_id is required"}), 400
 
         db = get_db()
-        uid, tenant_id = _uid_and_tenant()
-        if _bad(tenant_id):
-            return jsonify({"error": "Missing tenant_id on user"}), 401
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
 
         ref = db.collection("complaints").document(complaint_id)
         snap = ref.get()
-        ok, payload = _ensure_same_tenant(snap, tenant_id)
-        if not ok:
-            msg, code = payload
-            return jsonify({"error": msg}), code
+        if not snap.exists:
+            return jsonify({"error": "Not found"}), 404
+        data = snap.to_dict() or {}
+        if data.get("tenant_id") != tenant_id:
+            return jsonify({"error": "Forbidden: cross-tenant access"}), 403
 
-        return jsonify({"id": snap.id, **payload}), 200
+        if request.user.get("role") == SALES_REP and data.get("created_by") != uid:
+            return jsonify({"error": "forbidden"}), 403
+
+        return jsonify({"id": snap.id, **data}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# -----------------------------------------------------------------------------
-# EXISTING: Create complaint (kept)  POST /api/complaints
-# - adds tenant_id, created_by, ticket_number
-# -----------------------------------------------------------------------------
+# ---------------------------
+# Create complaint
+# ---------------------------
 @complaints_bp.route("", methods=["POST"])
 @require_auth
+@require_permission("complaints", "create")
 def create_complaint():
     body = request.get_json(force=True) or {}
     customer_id = body.get("customerId") or body.get("customer_id")
@@ -128,11 +166,10 @@ def create_complaint():
         return jsonify({"error": "customerId and title are required"}), 400
 
     db = get_db()
-    uid, tenant_id = _uid_and_tenant()
-    if _bad(tenant_id):
-        return jsonify({"error": "Missing tenant_id on user"}), 401
+    uid = request.user["uid"]
+    tenant_id = request.user.get("tenant_id", "default")
 
-    doc_ref = db.collection("complaints").document()  # auto ID
+    doc_ref = db.collection("complaints").document()
     ticket_number = f"COMP-{doc_ref.id[:4].upper()}"
 
     payload = {
@@ -151,20 +188,25 @@ def create_complaint():
         "customer_updates": [],
         "attachments": attachments,
         "ticket_number": ticket_number,
-        "created_at": firestore.SERVER_TIMESTAMP,  # server timestamp via your wrapper
+        "created_at": firestore.SERVER_TIMESTAMP,
         "created_by": uid,
+        "updated_at": firestore.SERVER_TIMESTAMP,
     }
     doc_ref.set(payload)
+    payload["id"] = doc_ref.id
+    payload["ticket_number"] = ticket_number
     return jsonify({
         "success": True,
-        "data": {"id": doc_ref.id, "ticketNumber": ticket_number, "message": "Complaint created successfully"}
+        "data": {"id": doc_ref.id, "ticketNumber": ticket_number, "message": "Complaint created successfully"},
+        "complaint": payload
     }), 201
 
-# -----------------------------------------------------------------------------
-# EXISTING: Update status (kept)  PUT /api/complaints/<complaint_id>/status
-# -----------------------------------------------------------------------------
+# ---------------------------
+# Update status (specific endpoint for status-only updates - must come before full update)
+# ---------------------------
 @complaints_bp.route("/<complaint_id>/status", methods=["PUT"])
 @require_auth
+@require_permission("complaints", "update")
 def update_status(complaint_id):
     body = request.get_json(force=True) or {}
     status = (body.get("status") or "").strip().lower()
@@ -172,16 +214,19 @@ def update_status(complaint_id):
         return jsonify({"error": "invalid status"}), 400
 
     db = get_db()
-    uid, tenant_id = _uid_and_tenant()
-    if _bad(tenant_id):
-        return jsonify({"error": "Missing tenant_id on user"}), 401
+    uid = request.user["uid"]
+    tenant_id = request.user.get("tenant_id", "default")
 
     ref = db.collection("complaints").document(complaint_id)
     snap = ref.get()
-    ok, existing = _ensure_same_tenant(snap, tenant_id)
-    if not ok:
-        msg, code = existing
-        return jsonify({"error": msg}), code
+    if not snap.exists:
+        return jsonify({"error": "Not found"}), 404
+    existing = snap.to_dict() or {}
+    if existing.get("tenant_id") != tenant_id:
+        return jsonify({"error": "Forbidden: cross-tenant update"}), 403
+
+    if request.user.get("role") == SALES_REP and existing.get("created_by") != uid:
+        return jsonify({"error": "forbidden"}), 403
 
     update = {"status": status, "updated_at": firestore.SERVER_TIMESTAMP}
     if status == "resolved":
@@ -192,114 +237,121 @@ def update_status(complaint_id):
             "resolvedBy": uid,
         }
     ref.update(update)
-    return jsonify({"status": status, "message": "Status updated"})
+    # Get updated complaint
+    updated_snap = ref.get()
+    updated_data = updated_snap.to_dict() or {}
+    return jsonify({
+        "status": status,
+        "message": "Status updated",
+        "complaint": {"id": complaint_id, **updated_data}
+    }), 200
 
-# -----------------------------------------------------------------------------
-# EXISTING: Add internal comment (kept)  POST /api/complaints/<complaint_id>/comments
-# -----------------------------------------------------------------------------
-@complaints_bp.route("/<complaint_id>/comments", methods=["POST"])
+# ---------------------------
+# Update complaint (full update)
+# ---------------------------
+@complaints_bp.route("/<complaint_id>", methods=["PUT"])
 @require_auth
-def add_internal_comment(complaint_id):
-    body = request.get_json(force=True) or {}
-    comment = (body.get("comment") or "").strip()
-    if not comment:
-        return jsonify({"error": "comment required"}), 400
+@require_permission("complaints", "update")
+def update_complaint(complaint_id):
+    """Update a complaint with full field support"""
+    try:
+        if _bad(complaint_id):
+            return jsonify({"error": "complaint_id is required"}), 400
+        
+        db = get_db()
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
+        
+        ref = db.collection("complaints").document(complaint_id)
+        snap = ref.get()
+        if not snap.exists:
+            return jsonify({"error": "Not found"}), 404
+        
+        existing = snap.to_dict() or {}
+        if existing.get("tenant_id") != tenant_id:
+            return jsonify({"error": "Forbidden: cross-tenant update"}), 403
+        
+        if request.user.get("role") == SALES_REP and existing.get("created_by") != uid:
+            return jsonify({"error": "forbidden"}), 403
+        
+        body = request.get_json(force=True) or {}
+        
+        # Fields that can be updated
+        update_fields = {}
+        allowed_fields = [
+            "title", "description", "category", "severity", "status",
+            "priority", "assigned_to", "sla", "internal_comments",
+            "customer_updates", "attachments"
+        ]
+        
+        for field in allowed_fields:
+            if field in body:
+                update_fields[field] = body[field]
+        
+        # Validate status if provided
+        if "status" in update_fields:
+            status = (update_fields["status"] or "").strip().lower()
+            if status not in {"new", "acknowledged", "in_progress", "resolved", "closed"}:
+                return jsonify({"error": "invalid status"}), 400
+            update_fields["status"] = status
+            
+            # Add resolution if status is resolved
+            if status == "resolved" and "resolution" not in existing:
+                update_fields["resolution"] = {
+                    "notes": body.get("resolutionNotes", ""),
+                    "customerSatisfaction": body.get("customerSatisfaction", ""),
+                    "resolvedAt": firestore.SERVER_TIMESTAMP,
+                    "resolvedBy": uid,
+                }
+        
+        if not update_fields:
+            return jsonify({"error": "No valid fields to update"}), 400
+        
+        update_fields["updated_at"] = firestore.SERVER_TIMESTAMP
+        ref.update(update_fields)
+        
+        # Get updated complaint
+        updated_snap = ref.get()
+        updated_data = updated_snap.to_dict() or {}
+        return jsonify({
+            "message": "Complaint updated successfully",
+            "complaint": {"id": complaint_id, **updated_data}
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in update_complaint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
-    db = get_db()
-    uid, tenant_id = _uid_and_tenant()
-    if _bad(tenant_id):
-        return jsonify({"error": "Missing tenant_id on user"}), 401
-
-    ref = db.collection("complaints").document(complaint_id)
-    snap = ref.get()
-    ok, _ = _ensure_same_tenant(snap, tenant_id)
-    if not ok:
-        msg, code = _
-        return jsonify({"error": msg}), code
-
-    ref.update({
-        "internal_comments": firestore.ArrayUnion([{
-            "userId": uid,
-            "comment": comment,
-            "timestamp": firestore.SERVER_TIMESTAMP,
-        }]),
-        "timeline": firestore.ArrayUnion([{
-            "timestamp": firestore.SERVER_TIMESTAMP,
-            "action": "internal_comment",
-            "userId": uid,
-            "details": comment[:140],
-        }]),
-        "updated_at": firestore.SERVER_TIMESTAMP,
-    })
-    return jsonify({"message": "Comment added"})
-
-# -----------------------------------------------------------------------------
-# EXISTING: Add customer update (kept)  POST /api/complaints/<complaint_id>/updates
-# -----------------------------------------------------------------------------
-@complaints_bp.route("/<complaint_id>/updates", methods=["POST"])
-@require_auth
-def add_customer_update(complaint_id):
-    body = request.get_json(force=True) or {}
-    message = (body.get("message") or "").strip()
-    if not message:
-        return jsonify({"error": "message required"}), 400
-
-    db = get_db()
-    uid, tenant_id = _uid_and_tenant()
-    if _bad(tenant_id):
-        return jsonify({"error": "Missing tenant_id on user"}), 401
-
-    ref = db.collection("complaints").document(complaint_id)
-    snap = ref.get()
-    ok, _ = _ensure_same_tenant(snap, tenant_id)
-    if not ok:
-        msg, code = _
-        return jsonify({"error": msg}), code
-
-    ref.update({
-        "customer_updates": firestore.ArrayUnion([{
-            "message": message,
-            "timestamp": firestore.SERVER_TIMESTAMP,
-            "sentBy": uid,
-        }]),
-        "timeline": firestore.ArrayUnion([{
-            "timestamp": firestore.SERVER_TIMESTAMP,
-            "action": "customer_update",
-            "userId": uid,
-            "details": message[:140],
-        }]),
-        "updated_at": firestore.SERVER_TIMESTAMP,
-    })
-    return jsonify({"message": "Update recorded"})
-
-# -----------------------------------------------------------------------------
-# NEW: Delete (soft close)  DELETE /api/complaints/<complaint_id>
-# -----------------------------------------------------------------------------
+# ---------------------------
+# Soft close/delete
+# ---------------------------
 @complaints_bp.route("/<complaint_id>", methods=["DELETE"])
 @require_auth
+@require_permission("complaints", "delete")
 def delete_complaint(complaint_id):
     try:
         if _bad(complaint_id):
             return jsonify({"error": "complaint_id is required"}), 400
 
         db = get_db()
-        uid, tenant_id = _uid_and_tenant()
-        if _bad(tenant_id):
-            return jsonify({"error": "Missing tenant_id on user"}), 401
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
 
         ref = db.collection("complaints").document(complaint_id)
         snap = ref.get()
-        ok, existing = _ensure_same_tenant(snap, tenant_id)
-        if not ok:
-            msg, code = existing
-            return jsonify({"error": msg}), code
+        if not snap.exists:
+            return jsonify({"error": "Not found"}), 404
+        existing = snap.to_dict() or {}
+        if existing.get("tenant_id") != tenant_id:
+            return jsonify({"error": "Forbidden: cross-tenant"}), 403
 
-        # Soft delete: mark closed (keeps history)
+        # Sales Rep may not delete
+        if request.user.get("role") == SALES_REP:
+            return jsonify({"error": "forbidden"}), 403
+
         ref.update({"status": "closed", "updated_at": firestore.SERVER_TIMESTAMP})
         return jsonify({"message": "Complaint closed"}), 200
-
-        # If you prefer hard delete, use:
-        # ref.delete()
-        # return jsonify({"message": "Complaint deleted"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

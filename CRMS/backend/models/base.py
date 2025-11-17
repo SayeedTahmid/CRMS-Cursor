@@ -1,3 +1,4 @@
+# backend/models/base.py
 """Base model with common functionality"""
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -37,13 +38,9 @@ class BaseModel:
         return cls(**{**data, 'id': doc_id})
 
     
-    def update_timestamps(self, is_new=False):
-        """Automatically manage created_at and updated_at fields"""
-        from datetime import datetime
-        now = datetime.utcnow()
-        if is_new and not getattr(self, "created_at", None):
-            self.created_at = now
-        self.updated_at = now
+    def update_timestamp(self):
+        """Update the updated_at timestamp"""
+        self.updated_at = datetime.utcnow()
         return self
 
 

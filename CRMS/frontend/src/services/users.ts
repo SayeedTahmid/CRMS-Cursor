@@ -1,3 +1,5 @@
+// frontend/src/services/users.ts
+
 export const usersService = {
     list: async () => {
       const res = await fetch("/api/users", { credentials: "include" });

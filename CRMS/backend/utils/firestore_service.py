@@ -1,3 +1,5 @@
+# backend/utils/firestore_service.py
+
 """Firestore CRUD service with automatic timestamp management"""
 from typing import Type, TypeVar, List, Optional, Dict, Any
 from datetime import datetime
@@ -18,9 +20,13 @@ class FirestoreService:
     # ✅ Create / Add
     def create(self, model: T) -> str:
         """Add a new document with automatic timestamps"""
-        model.update_timestamps(is_new=True)
+        from datetime import datetime
+        now = datetime.utcnow()
+        if not hasattr(model, 'created_at') or not model.created_at:
+            model.created_at = now
+        model.updated_at = now
         data = model.to_dict()
-        doc_ref, write_result = self.collection.add(data)
+        _, doc_ref = self.collection.add(data)
         model.id = doc_ref.id
         return model.id
 

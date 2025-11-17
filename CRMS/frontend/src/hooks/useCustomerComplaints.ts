@@ -1,3 +1,5 @@
+// frontend/src/hooks/useCustomerComplaints.ts
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { customerService } from "@/services/customers";
 

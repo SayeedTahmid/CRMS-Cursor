@@ -1,3 +1,5 @@
+# backend/scripts/set_claims.py
+
 import sys, os
 import firebase_admin
 from firebase_admin import auth, credentials

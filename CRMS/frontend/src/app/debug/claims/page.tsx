@@ -1,3 +1,5 @@
+// frontend/src/app/debug/claims/page.tsx
+
 "use client";
 
 import { useState } from "react";

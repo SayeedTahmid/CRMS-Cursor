@@ -1,3 +1,5 @@
+// frontend/src/types/index.ts
+
 /** TypeScript type definitions */
 
 export interface User {
@@ -82,6 +84,7 @@ export interface Complaint {
   sla_deadline?: string;
   initial_response?: string;
   internal_notes?: string;
+  ticket_number?: string;
   customer_updates?: any[];
   attachments?: string[];
   resolution?: string;

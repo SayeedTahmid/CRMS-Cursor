@@ -1,3 +1,5 @@
+// frontend/src/pages/Login.tsx
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signIn, isAuthenticated } from '../services/auth';
@@ -99,6 +101,14 @@ const Login: React.FC = () => {
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
+
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <Link to="/forgot-password" className="font-medium text-primary-purple hover:text-secondary-purple">
+                Forgot password?
+              </Link>
+            </div>
+          </div>
 
           <button
             type="submit"

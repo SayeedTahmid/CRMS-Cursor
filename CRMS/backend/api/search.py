@@ -2,7 +2,6 @@
 from flask import Blueprint, request, jsonify
 from google.cloud.firestore_v1.base_query import FieldFilter
 from .auth import require_auth
-from .helpers import current_user
 from utils.firebase import get_db
 
 search_bp = Blueprint("search", __name__)
@@ -17,7 +16,7 @@ def search():
         return jsonify({"error": "q required"}), 400
 
     db = get_db()
-    tenant_id = current_user().get("tenant_id")
+    tenant_id = request.user.get("tenant_id", "default")
 
     def find(col, fields):
         rs = []

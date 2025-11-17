@@ -1,6 +1,7 @@
+// frontend/src/app/customers/page.tsx
+
 "use client";
 
-import React from "react";
 import useCustomers from "@/hooks/useCustomers";
 
 export default function CustomersPage() {
@@ -16,12 +17,12 @@ export default function CustomersPage() {
           className="border rounded px-3 py-2 w-80"
           placeholder="Search name/email/phone/company"
           value={params.search ?? ""}
-          onChange={(e) => setParams((p) => ({ ...p, page: 1, search: e.target.value }))}
+          onChange={(e) => setParams((p: any) => ({ ...p, page: 1, search: e.target.value }))}
         />
         <select
           className="border rounded px-3 py-2"
           value={params.status ?? ""}
-          onChange={(e) => setParams((p) => ({ ...p, page: 1, status: e.target.value || undefined }))}
+          onChange={(e) => setParams((p: any) => ({ ...p, page: 1, status: e.target.value || undefined }))}
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -47,10 +48,24 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {customers.map((c: any) => (
-                <tr key={c.id} className="hover:bg-gray-50">
+              {customers.map((c: any, index: number) => (
+                <tr key={c.id || `customer-${index}-${c.name || 'unnamed'}-${c.email || ''}`} className="hover:bg-gray-50">
                   <td className="p-2">
-                    <a className="text-blue-600 underline" href={`/customers/${c.id}`}>{c.name || "(no name)"}</a>
+                    <a 
+                      className="text-blue-600 underline" 
+                      href={c.id ? `/customers/${encodeURIComponent(c.id)}` : "#"}
+                      onClick={(e) => {
+                        if (c.id) {
+                          e.preventDefault();
+                          window.location.href = `/customers/${encodeURIComponent(c.id)}`;
+                        } else {
+                          e.preventDefault();
+                          console.warn("Cannot navigate: Customer missing ID", c);
+                        }
+                      }}
+                    >
+                      {c.name || "(no name)"}
+                    </a>
                   </td>
                   <td className="p-2">{c.email || "-"}</td>
                   <td className="p-2">{c.phone || "-"}</td>
@@ -63,13 +78,13 @@ export default function CustomersPage() {
           <div className="flex items-center gap-2 pt-3">
             <button
               className="border rounded px-3 py-2"
-              onClick={() => setParams((p) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}
+              onClick={() => setParams((p: any) => ({ ...p, page: Math.max(1, (p.page ?? 1) - 1) }))}
             >
               Prev
             </button>
             <button
               className="border rounded px-3 py-2"
-              onClick={() => setParams((p) => ({ ...p, page: (p.page ?? 1) + 1 }))}
+              onClick={() => setParams((p: any) => ({ ...p, page: (p.page ?? 1) + 1 }))}
             >
               Next
             </button>

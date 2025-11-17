@@ -1,133 +1,199 @@
+// frontend/src/services/customers.ts
 /** Customer API service */
-import api from "./api";
-import { Customer } from "../types";
+import api from './api';
+import { Customer } from '../types';
 
 export interface ListCustomersParams {
   page?: number;
-  limit?: number;        // PRD
-  pageSize?: number;     // legacy alias
+  limit?: number;
   status?: string;
   type?: string;
   ownerId?: string;
-  from?: string;         // 'YYYY-MM-DD' or ISO
+  from?: string;
   to?: string;
   search?: string;
-  orderBy?: string;      // default: created_at
-  orderDir?: "asc" | "desc"; // default: "desc"
+  orderBy?: string;
+  orderDir?: string;
 }
 
 export interface ListCustomersResponse {
   customers: Customer[];
-  page: number;
-  limit: number;
-  returned: number;
+  total: number;
+  page?: number;
+  limit?: number;
+  returned?: number;
 }
 
 export const customerService = {
   /**
-   * PRD-aligned list with pagination, filters, ordering
-   * GET /api/customers?{page,limit,status,type,ownerId,from,to,search,orderBy,orderDir}
+   * List customers with pagination and filtering
    */
-  list: async (params: ListCustomersParams = {}): Promise<ListCustomersResponse> => {
-    const res = await api.get("/customers", { params });
-    return res.data; // { customers, page, limit, returned }
+  list: async (params: ListCustomersParams): Promise<ListCustomersResponse> => {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.status) queryParams.append('status', params.status);
+    if (params.type) queryParams.append('type', params.type);
+    if (params.ownerId) queryParams.append('owner_id', params.ownerId);
+    if (params.from) queryParams.append('from', params.from);
+    if (params.to) queryParams.append('to', params.to);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.orderBy) queryParams.append('order_by', params.orderBy);
+    if (params.orderDir) queryParams.append('order_dir', params.orderDir);
+
+    const response = await api.get(`/customers?${queryParams.toString()}`);
+    return {
+      customers: response.data.customers || [],
+      total: response.data.total || 0,
+      page: params.page || 1,
+      limit: params.limit || 20,
+      returned: response.data.customers?.length || 0,
+    };
   },
 
   /**
-   * Backward-compatible wrapper for old getAll({status,type,search})
-   * Returns PRD shape; callers should migrate to `list()` directly.
+   * Get all customers with optional filtering
    */
   getAll: async (filters?: {
     status?: string;
     type?: string;
     search?: string;
-  }): Promise<ListCustomersResponse> => {
-    const params: ListCustomersParams = {
-      page: 1,
-      limit: 20,
-      status: filters?.status,
-      type: filters?.type,
-      search: filters?.search,
-      orderBy: "created_at",
-      orderDir: "desc",
-    };
-    return customerService.list(params);
+  }): Promise<{ customers: Customer[]; total: number }> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.search) params.append('search', filters.search);
+
+    const response = await api.get(`/customers?${params.toString()}`);
+    const data = response.data;
+    
+    // DEBUG: Log the raw response
+    if (data.customers && data.customers.length > 0) {
+      const firstCustomer = data.customers[0];
+      const allKeys = Object.keys(firstCustomer);
+      console.log('🔍 Raw API response - First customer keys:', allKeys);
+      console.log('🔍 Raw API response - First customer:', JSON.stringify(firstCustomer, null, 2));
+      console.log('🔍 Raw API response - Has id field?', 'id' in firstCustomer);
+      console.log('🔍 Raw API response - Has _id field?', '_id' in firstCustomer);
+      console.log('🔍 Raw API response - id value:', firstCustomer.id);
+      console.log('🔍 Raw API response - All 24 keys:', allKeys.sort());
+      console.log('🔍 Raw API response - Looking for id in keys:', allKeys.includes('id'));
+      
+      // Check if ID might be stored differently
+      if (!('id' in firstCustomer)) {
+        console.warn('⚠️ ID field missing! Checking for alternatives...');
+        console.warn('   Keys containing "id":', allKeys.filter(k => k.toLowerCase().includes('id')));
+        console.warn('   First customer keys (full list):', allKeys);
+      }
+    }
+    
+    // Ensure all customers have IDs - log warnings for missing IDs
+    if (data.customers) {
+      data.customers = data.customers.map((customer: Customer, index: number) => {
+        // Log detailed info about missing IDs
+        if (!customer.id) {
+          console.error(`❌ Customer at index ${index} missing ID:`, {
+            name: customer.name,
+            allKeys: Object.keys(customer),
+            customerData: customer
+          });
+        } else {
+          if (index < 3) {
+            console.log(`✅ Customer ${index} HAS ID:`, customer.id, customer.name);
+          }
+        }
+        return customer;
+      });
+    }
+    
+    return data;
   },
 
   /**
    * Get a single customer by ID
-   * GET /api/customers/:id
-   * Backend returns the full customer object (not wrapped).
    */
   getById: async (id: string): Promise<Customer> => {
-    if (!id || id === "undefined" || id === "null") {
-      throw new Error("Valid customer id is required");
+    try {
+      const response = await api.get(`/customers/${encodeURIComponent(id)}`);
+      // Handle both direct response and nested response
+      return response.data.customer || response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to load customer';
+      console.error('getById error:', errorMessage, error.response?.data);
+      throw new Error(errorMessage);
     }
-    const response = await api.get(`/customers/${id}`);
-    return response.data;
   },
 
   /**
    * Create a new customer
-   * POST /api/customers
    */
   create: async (customer: Partial<Customer>): Promise<Customer> => {
-    const response = await api.post("/customers", customer);
-    // backend responds: { message, customer }
-    return response.data.customer;
+    try {
+      const response = await api.post('/customers', customer);
+      return response.data.customer;
+    } catch (error: any) {
+      // Extract error message from response
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to create customer';
+      throw new Error(errorMessage);
+    }
   },
 
   /**
    * Update an existing customer
-   * PUT /api/customers/:id
    */
   update: async (id: string, customer: Partial<Customer>): Promise<Customer> => {
-    if (!id || id === "undefined" || id === "null") {
-      throw new Error("Valid customer id is required");
-    }
     const response = await api.put(`/customers/${id}`, customer);
-    // backend responds: { message, customer }
     return response.data.customer;
   },
 
   /**
-   * Delete (soft-delete) a customer
-   * DELETE /api/customers/:id
+   * Delete a customer (soft delete)
    */
   delete: async (id: string): Promise<void> => {
-    if (!id || id === "undefined" || id === "null") {
-      throw new Error("Valid customer id is required");
-    }
     await api.delete(`/customers/${id}`);
   },
 
   /**
-   * Customer logs (supports pagination)
-   * GET /api/customers/:id/logs?page&limit
+   * Get all logs for a customer with pagination
    */
   getLogs: async (
     customerId: string,
-    params: { page?: number; limit?: number; pageSize?: number } = {}
+    params?: { page?: number; limit?: number }
   ): Promise<{ logs: any[]; page: number; limit: number; returned: number }> => {
-    if (!customerId || customerId === "undefined" || customerId === "null") {
-      throw new Error("Valid customer id is required");
-    }
-    const res = await api.get(`/customers/${customerId}/logs`, { params });
-    return res.data; // { logs, page, limit, returned }
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const response = await api.get(`/customers/${customerId}/logs?${queryParams.toString()}`);
+    const logs = response.data.logs || [];
+    return {
+      logs,
+      page: params?.page || 1,
+      limit: params?.limit || 20,
+      returned: logs.length,
+    };
   },
 
   /**
-   * Customer complaints (supports pagination)
-   * GET /api/customers/:id/complaints?page&limit
+   * Get all complaints for a customer with pagination
    */
   getComplaints: async (
     customerId: string,
-    params: { page?: number; limit?: number; pageSize?: number } = {}
+    params?: { page?: number; limit?: number }
   ): Promise<{ complaints: any[]; page: number; limit: number; returned: number }> => {
-    if (!customerId || customerId === "undefined" || customerId === "null") {
-      throw new Error("Valid customer id is required");
-    }
-    const res = await api.get(`/customers/${customerId}/complaints`, { params });
-    return res.data; // { complaints, page, limit, returned }
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const response = await api.get(`/customers/${customerId}/complaints?${queryParams.toString()}`);
+    const complaints = response.data.complaints || [];
+    return {
+      complaints,
+      page: params?.page || 1,
+      limit: params?.limit || 20,
+      returned: complaints.length,
+    };
   },
 };
+
+

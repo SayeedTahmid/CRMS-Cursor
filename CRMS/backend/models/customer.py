@@ -1,3 +1,4 @@
+# backend/models/customer.py
 """Customer model"""
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -38,16 +39,10 @@ class Customer(BaseModel):
         self.total_orders = kwargs.get('total_orders', 0)
         self.total_value = kwargs.get('total_value', 0.0)
     
-    def to_dict(self, include_id: bool = False) -> Dict[str, Any]:
-        """Convert customer to dictionary for Firestore/JSON responses.
-
-        include_id=True ensures the 'id' field is present in the returned dict.
-        """
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert customer to dictionary for Firestore"""
         data = super().to_dict()
-        if include_id and getattr(self, "id", None):
-            # Ensure string id on the wire for React keys and links
-            data["id"] = str(self.id)
-
+        
         data.update({
             'name': self.name,
             'email': self.email,
@@ -70,6 +65,7 @@ class Customer(BaseModel):
             'total_orders': self.total_orders,
             'total_value': self.total_value,
         })
+        
         return data
     
     @classmethod
@@ -80,3 +76,5 @@ class Customer(BaseModel):
     def is_valid(self) -> bool:
         """Validate customer data"""
         return bool(self.name and (self.email or self.phone))
+
+

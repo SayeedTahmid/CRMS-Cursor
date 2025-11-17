@@ -1,3 +1,5 @@
+// frontend/src/pages/CustomerForm.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { customerService } from '../services/customers';
@@ -75,12 +77,26 @@ const CustomerForm: React.FC = () => {
     try {
       if (isEditMode && id) {
         await customerService.update(id, formData);
+        navigate('/customers');
       } else {
-        await customerService.create(formData);
+        console.log('Creating customer with data:', formData);
+        const createdCustomer = await customerService.create(formData);
+        console.log('Customer created successfully:', createdCustomer);
+        
+        // Navigate to the newly created customer's detail page
+        if (createdCustomer?.id) {
+          console.log('Navigating to customer:', createdCustomer.id);
+          navigate(`/customers/${encodeURIComponent(createdCustomer.id)}`);
+        } else {
+          console.warn('Created customer missing ID, navigating to list:', createdCustomer);
+          navigate('/customers');
+        }
       }
-      navigate('/customers');
     } catch (err: any) {
-      setError(err.message || 'Failed to save customer');
+      console.error('Customer save error:', err);
+      // Extract error message
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to save customer';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

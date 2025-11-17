@@ -1,3 +1,5 @@
+// frontend/src/hooks/useLogs.ts
+
 import { useEffect, useState } from "react";
 import { listLogs, ListLogsParams } from "@/services/logs";
 

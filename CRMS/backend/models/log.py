@@ -1,3 +1,4 @@
+# backend/models/log.py
 """Log model for tracking customer interactions"""
 from typing import Optional, Dict, Any, List
 from datetime import datetime

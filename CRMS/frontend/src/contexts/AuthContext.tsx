@@ -1,3 +1,5 @@
+// frontend/src/contexts/AuthContext.tsx
+
 import React, {
   createContext,
   useContext,
@@ -55,23 +57,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   /**
-   * 🔐 Verify Firebase token with backend
+   * 🔐 Verify Firebase token with backend (non-blocking)
    */
   const verifyTokenWithBackend = async (firebaseUser: User): Promise<void> => {
     try {
-      const idToken = await firebaseUser.getIdToken(true);
-      const response = await axios.post(`${API_BASE}/auth/verify`, { idToken });
+      const idToken = await firebaseUser.getIdToken();
+      const response = await axios.post(`${API_BASE}/auth/verify`, { idToken }, { timeout: 10000 });
 
-      if (response.data?.authenticated) {
-        setUser(response.data.user);
+      if (response.data?.authenticated && response.data?.user) {
+        // Update user data from backend
+        const backendUser = response.data.user;
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: backendUser.display_name || backendUser.displayName || firebaseUser.displayName || firebaseUser.email,
+          role: backendUser.role || 'viewer',
+          tenant_id: backendUser.tenant_id || backendUser.tenantId || 'default',
+          ...backendUser,
+        });
         localStorage.setItem("idToken", idToken);
-      } else {
-        console.warn("Backend rejected token:", response.data?.error);
-        setUser(null);
+        if (backendUser) {
+          localStorage.setItem("user", JSON.stringify(backendUser));
+        }
       }
     } catch (err) {
-      console.error("Token verification error:", (err as Error).message);
-      setUser(null);
+      // Backend verification failed - but Firebase auth succeeded
+      // Don't set user to null - use Firebase user data instead
+      const errorMsg = (err as Error).message;
+      // Only log timeout warnings once
+      if (errorMsg.includes('timeout') && !window.__backend_timeout_logged) {
+        window.__backend_timeout_logged = true;
+        console.warn("⚠️ Backend verification timeout - backend may be slow or unavailable");
+        console.warn("💡 This is normal if the backend is not running. The app will work with Firebase auth.");
+        console.warn("💡 To start the backend: cd CRMS/backend && python app.py");
+      } else if (!errorMsg.includes('timeout')) {
+        console.warn("Backend verification failed (using Firebase auth):", errorMsg);
+      }
     }
   };
 
@@ -93,36 +114,74 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (!firebaseUser) {
         // User logged out manually
         localStorage.removeItem("idToken");
+        localStorage.removeItem("user");
         setUser(null);
         setLoading(false);
         return;
       }
-  // ⭐ Always cache a token immediately so Axios has something to send
-      {
-       const t = await firebaseUser.getIdToken(/* forceRefresh */ false);
-       localStorage.setItem("idToken", t);
+  
+      // Set user immediately from Firebase (don't wait for backend)
+      const idToken = await firebaseUser.getIdToken();
+      localStorage.setItem("idToken", idToken);
+      
+      // Try to get user data from localStorage first
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: userData.display_name || userData.displayName || firebaseUser.displayName || firebaseUser.email,
+            role: userData.role || 'viewer',
+            tenant_id: userData.tenant_id || userData.tenantId || 'default',
+            ...userData,
+          });
+          setLoading(false);
+        } catch (e) {
+          // If parsing fails, use Firebase data
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || firebaseUser.email,
+            role: 'viewer',
+            tenant_id: 'default',
+          });
+          setLoading(false);
+        }
+      } else {
+        // No stored user data - use Firebase data immediately
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || firebaseUser.email,
+          role: 'viewer',
+          tenant_id: 'default',
+        });
+        setLoading(false);
       }
-      // If backend not yet ready, wait and retry instead of logging out
-      if (!backendReady) {
-        console.warn("⏳ Waiting for backend before verifying user...");
-        const waitForBackend = async (retries = 5): Promise<void> => {
+  
+      // Try to verify with backend in background (non-blocking)
+      if (backendReady) {
+        // Don't await - let it run in background
+        verifyTokenWithBackend(firebaseUser).catch(() => {
+          // Already logged warning in verifyTokenWithBackend
+        });
+      } else {
+        // Wait for backend, but don't block user
+        const waitForBackend = async (retries = 3): Promise<void> => {
           for (let i = 0; i < retries; i++) {
             await new Promise((r) => setTimeout(r, 1000));
             if (backendReady) {
-              await verifyTokenWithBackend(firebaseUser);
-              setLoading(false);
+              verifyTokenWithBackend(firebaseUser).catch(() => {});
               return;
             }
           }
-          console.error("❌ Backend unavailable after waiting, skipping verification.");
-          setLoading(false);
+          // Backend still not ready after waiting - that's OK
+          console.log("Backend not ready yet - will verify when available");
         };
-        await waitForBackend();
-        return;
+        waitForBackend();
       }
-  
-      await verifyTokenWithBackend(firebaseUser);
-      setLoading(false);
     });
   
     return () => {

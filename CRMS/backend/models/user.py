@@ -1,3 +1,4 @@
+# backend/models/user.py
 """User model for managing CRM users"""
 
 from typing import Optional, Dict, Any

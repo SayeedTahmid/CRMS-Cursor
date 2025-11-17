@@ -1,3 +1,5 @@
+// frontend/src/hooks/useCustomers.ts
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { customerService, ListCustomersParams, ListCustomersResponse } from "@/services/customers";
 
@@ -13,7 +15,7 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
   return debounced;
 }
 
-export interface UseCustomersOptions extends ListCustomersParams {
+export interface UseCustomersOptions extends Partial<ListCustomersParams> {
   /**
    * Optional debounce for `search` param (ms). Default: 300ms
    * Set 0 to disable.
@@ -37,9 +39,9 @@ export function useCustomers(initial: UseCustomersOptions = {}) {
     ...initialParams
   } = initial;
 
-  const [params, setParams] = useState<ListCustomersParams>({
+  const [params, setParams] = useState<Partial<ListCustomersParams>>({
     page: initialParams.page ?? 1,
-    limit: initialParams.limit ?? initialParams.pageSize ?? 20,
+    limit: initialParams.limit ?? (initialParams as any).pageSize ?? 20,
     status: initialParams.status,
     type: initialParams.type,
     ownerId: initialParams.ownerId,
@@ -52,13 +54,14 @@ export function useCustomers(initial: UseCustomersOptions = {}) {
 
   // Debounce search only
   const debouncedSearch = useDebouncedValue(params.search ?? "", debounceMs);
-  const effectiveParams: ListCustomersParams = useMemo(
+  const effectiveParams: Partial<ListCustomersParams> = useMemo(
     () => ({ ...params, search: debouncedSearch }),
     [params, debouncedSearch]
   );
 
   const [data, setData] = useState<ListCustomersResponse>({
     customers: [],
+    total: 0,
     page: params.page ?? 1,
     limit: params.limit ?? 20,
     returned: 0,
@@ -74,8 +77,8 @@ export function useCustomers(initial: UseCustomersOptions = {}) {
     setError(null);
     const seq = ++reqSeq.current;
     try {
-      const merged: ListCustomersParams = { ...effectiveParams, ...(override ?? {}) };
-      const result = await customerService.list(merged);
+      const merged: Partial<ListCustomersParams> = { ...effectiveParams, ...(override ?? {}) };
+      const result = await customerService.list(merged as ListCustomersParams);
       // Only apply the latest request
       if (seq === reqSeq.current) {
         setData(result);

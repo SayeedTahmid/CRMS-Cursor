@@ -1,7 +1,10 @@
-import React from 'react';
+// frontend/src/pages/Dashboard.tsx
+
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import useMetrics from '../hooks/useMetrics'; // ⬅️ NEW
+import { metricsService, DashboardMetrics } from '../services/metrics';
+import SearchBar from '../components/SearchBar';
 import {
   UserGroupIcon,
   ClipboardDocumentListIcon,
@@ -11,25 +14,48 @@ import {
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
-  const { data, loading, error, reload } = useMetrics(); // ⬅️ NEW
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    active_customers: 0,
+    open_complaints: 0,
+    recent_logs_7d: 0,
+    performance_month: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Map API -> tiles (fallbacks so UI never breaks)
-  const totalCustomers = data?.active_customers ?? 0;     // tile text says "Total Customers" subtitle "Active customers"
-  const openComplaints = data?.open_complaints ?? 0;
-  const recentLogs = data?.recent_logs_7d ?? 0;
-  const performance = data?.performance_month ?? 0;
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        setLoading(true);
+        const data = await metricsService.getDashboardMetrics();
+        setMetrics(data);
+      } catch (error) {
+        console.error('Failed to load dashboard metrics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetrics();
+    
+    // Refresh metrics every 30 seconds
+    const interval = setInterval(fetchMetrics, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-dark-bg">
       {/* Header */}
       <header className="bg-dark-bg-secondary border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-16 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-text-primary">Modern CRM</h1>
             </div>
+            <div className="flex-1 max-w-lg">
+              <SearchBar />
+            </div>
             <div className="flex items-center space-x-4">
-              <span className="text-text-secondary">Welcome, {user?.display_name}</span>
+              <span className="text-text-secondary">Welcome, {user?.displayName || user?.display_name || user?.email}</span>
               <button
                 onClick={logout}
                 className="px-4 py-2 text-sm font-medium text-text-primary hover:text-primary-purple transition-colors"
@@ -43,20 +69,9 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-text-primary">Dashboard</h2>
-            <p className="text-text-secondary mt-1">Manage your customers and track interactions</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {loading && <span className="text-text-secondary text-sm">Loading…</span>}
-            {error && (
-              <span className="text-red-400 text-sm">
-                Failed to load metrics
-                <button className="ml-2 underline" onClick={reload}>Retry</button>
-              </span>
-            )}
-          </div>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-text-primary">Dashboard</h2>
+          <p className="text-text-secondary mt-1">Manage your customers and track interactions</p>
         </div>
 
         {/* Stats Grid */}
@@ -64,39 +79,35 @@ const Dashboard: React.FC = () => {
           <StatCard
             icon={<UserGroupIcon className="w-8 h-8" />}
             title="Total Customers"
-            value={String(totalCustomers)}
+            value={loading ? '...' : metrics.active_customers.toString()}
             subtitle="Active customers"
             color="primary-purple"
-            action={<Link to="/customers?status=active" className="text-sm text-primary-purple underline">View</Link>}
           />
           <StatCard
             icon={<ClipboardDocumentListIcon className="w-8 h-8" />}
             title="Open Complaints"
-            value={String(openComplaints)}
+            value={loading ? '...' : metrics.open_complaints.toString()}
             subtitle="In progress"
             color="warning"
-            action={<Link to="/complaints?status=in_progress" className="text-sm text-primary-purple underline">View</Link>}
           />
           <StatCard
             icon={<EnvelopeIcon className="w-8 h-8" />}
             title="Recent Logs"
-            value={String(recentLogs)}
+            value={loading ? '...' : metrics.recent_logs_7d.toString()}
             subtitle="Last 7 days"
             color="success"
-            action={<Link to="/logs?range=7d" className="text-sm text-primary-purple underline">View</Link>}
           />
           <StatCard
             icon={<ChartBarIcon className="w-8 h-8" />}
             title="Performance"
-            value={loading ? '---' : String(performance)}
+            value={loading ? '...' : metrics.performance_month.toString()}
             subtitle="This month"
             color="secondary-purple"
-            action={<Link to="/logs?range=month" className="text-sm text-primary-purple underline">View</Link>}
           />
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <QuickActionCard
             title="Manage Customers"
             description="View, add, and update customer information"
@@ -104,9 +115,15 @@ const Dashboard: React.FC = () => {
             color="primary-purple"
           />
           <QuickActionCard
-            title="View Logs"
-            description="Track all customer interactions and activities"
-            link="/logs"
+            title="Manage Complaints"
+            description="Track and resolve customer complaints"
+            link="/complaints"
+            color="warning"
+          />
+          <QuickActionCard
+            title="Create Log"
+            description="Record customer interactions and activities"
+            link="/logs/new"
             color="secondary-purple"
           />
         </div>
@@ -121,10 +138,9 @@ interface StatCardProps {
   value: string;
   subtitle: string;
   color: string;
-  action?: React.ReactNode;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color, action }) => {
+const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color }) => {
   return (
     <div className="bg-dark-bg-card rounded-lg p-6 border border-border">
       <div className="flex items-center justify-between">
@@ -132,7 +148,6 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color
           <p className="text-text-secondary text-sm font-medium">{title}</p>
           <p className="text-3xl font-bold text-text-primary mt-2">{value}</p>
           <p className="text-text-secondary text-xs mt-1">{subtitle}</p>
-          {action ? <div className="mt-2">{action}</div> : null}
         </div>
         <div className={`text-${color}`}>
           {icon}
@@ -141,7 +156,6 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle, color
     </div>
   );
 };
-
 
 interface QuickActionCardProps {
   title: string;
@@ -162,3 +176,5 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({ title, description, l
 };
 
 export default Dashboard;
+
+

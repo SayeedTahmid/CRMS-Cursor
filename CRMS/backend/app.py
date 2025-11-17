@@ -1,3 +1,5 @@
+# backend/app.py
+
 """
 CRM System Backend - Main Application
 """
@@ -25,16 +27,18 @@ app = Flask(__name__)
 # Configure CORS properly for all local and dev environments
 CORS(app, resources={r"/*": {
     "origins": [
-        "http://localhost:5173", "http://127.0.0.1:5173",
-        "http://localhost:5174", "http://127.0.0.1:5174",
-        "http://192.168.1.2:5173", "http://192.168.1.2:5174", "http://192.168.1.2:5175",
-        "http://192.168.1.4:5173", "http://192.168.1.4:5174", "http://192.168.1.4:5175"
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://192.168.1.4:5174",
+        "http://192.168.1.4:5173",
+        "http://192.168.1.4:5175"  # important: your Vite dev IP
     ],
     "allow_headers": ["Content-Type", "Authorization"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "supports_credentials": True
 }})
-
 
 # Initialize Flask-RESTful API
 api = Api(app)
@@ -84,33 +88,47 @@ def api_health():
 from api.auth import auth_bp
 from api.customers import customers_bp
 from api.logs import logs_bp
-from api.complaints import complaints_bp
-from api.search import search_bp
 from api.users import users_bp
-from api.metrics import metrics_bp
 
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(customers_bp, url_prefix='/api/customers')
 app.register_blueprint(logs_bp, url_prefix='/api/logs')
-app.register_blueprint(complaints_bp, url_prefix='/api/complaints')
-app.register_blueprint(search_bp, url_prefix='/api/search')
 app.register_blueprint(users_bp, url_prefix='/api/users')
-app.register_blueprint(metrics_bp, url_prefix="/api/metrics")
+# Register complaints blueprint if it exists
+try:
+    from api.complaints import complaints_bp
+    app.register_blueprint(complaints_bp, url_prefix='/api/complaints')
+except ImportError:
+    print("⚠️  Complaints module not available. Skipping registration.")
 
-print("\n=== Registered routes ===")
-for rule in app.url_map.iter_rules():
-    print(f"{','.join(sorted(rule.methods)):<22} {rule.rule}")
-print("=========================\n")
+# Register metrics blueprint if it exists
+try:
+    from api.metrics import metrics_bp
+    app.register_blueprint(metrics_bp, url_prefix='/api/metrics')
+except ImportError:
+    print("⚠️  Metrics module not available. Skipping registration.")
 
+# Register search blueprint if it exists
+try:
+    from api.search import search_bp
+    app.register_blueprint(search_bp, url_prefix='/api/search')
+except ImportError:
+    print("⚠️  Search module not available. Skipping registration.")
 
-from werkzeug.exceptions import HTTPException
+# Register files blueprint if it exists
+try:
+    from api.files import files_bp
+    app.register_blueprint(files_bp, url_prefix='/api/files')
+except ImportError:
+    print("⚠️  Files module not available. Skipping registration.")
 
-@app.errorhandler(Exception)
-def handle_exception(e):
-    code = 500
-    if isinstance(e, HTTPException):
-        code = e.code
-    return jsonify({"error": str(e), "code": code}), code
+# Register reports blueprint if it exists
+try:
+    from api.reports import reports_bp
+    app.register_blueprint(reports_bp, url_prefix='/api/reports')
+except ImportError:
+    print("⚠️  Reports module not available. Skipping registration.")
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

@@ -1,3 +1,5 @@
+// frontend/src/lib/getClaims.ts
+
 import { getAuth } from "firebase/auth";
 
 /** Forces a token refresh, returns { role, tenant_id } or nulls if missing */

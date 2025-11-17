@@ -9,8 +9,14 @@ import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import CustomerForm from "./pages/CustomerForm";
+import LogForm from "./pages/LogForm";
 import Complaints from "./pages/Complaints";
-import LogsPage from "./pages/Logs";
+import ComplaintForm from "./pages/ComplaintForm";
+import ComplaintDetail from "./pages/ComplaintDetail";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import ForgotPassword from "./pages/ForgotPassword";
+import Reports from "./pages/Reports";
 
 /** ✅ Protected route wrapper */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -54,6 +60,7 @@ function App() {
           {/* 🔐 Auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* 🏠 Protected dashboard */}
           <Route
@@ -75,6 +82,24 @@ function App() {
             }
           />
 
+          {/* 📝 Add Customer Form (before :id route) */}
+          <Route
+            path="/customers/new"
+            element={
+              <ProtectedRoute>
+                <CustomerForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customers/edit/:id"
+            element={
+              <ProtectedRoute>
+                <CustomerForm />
+              </ProtectedRoute>
+            }
+          />
+
           {/* 👤 Single customer details */}
           <Route
             path="/customers/:id"
@@ -85,32 +110,88 @@ function App() {
             }
           />
 
-          {/* 📝 Add/Edit Customer Form */}
+          {/* 📝 Add/Edit Log Form */}
           <Route
-            path="/customers/new"
+            path="/logs/new"
             element={
               <ProtectedRoute>
-                <CustomerForm />
+                <LogForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logs/edit/:id"
+            element={
+              <ProtectedRoute>
+                <LogForm />
               </ProtectedRoute>
             }
           />
 
-          {/*Complaints */}
+          {/* 📝 Add Complaint Form (before :id route) */}
+          <Route
+            path="/complaints/new"
+            element={
+              <ProtectedRoute>
+                <ComplaintForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/complaints/edit/:id"
+            element={
+              <ProtectedRoute>
+                <ComplaintForm />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 📋 Single Complaint Details */}
+          <Route
+            path="/complaints/:id"
+            element={
+              <ProtectedRoute>
+                <ComplaintDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 📋 Complaints List (must be last) */}
           <Route
             path="/complaints"
             element={
               <ProtectedRoute>
-                <Complaints/>
+                <Complaints />
               </ProtectedRoute>
             }
           />
 
-          {/*Logs*/}
+          {/* 👤 User Profile */}
           <Route
-            path="/logs"
+            path="/profile"
             element={
               <ProtectedRoute>
-                <LogsPage/>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ⚙️ Settings */}
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 📊 Reports */}
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             }
           />

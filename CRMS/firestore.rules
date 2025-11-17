@@ -1,35 +1,72 @@
+// firestore.rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() { return request.auth != null; }
-    function belongsToTenant(tid) { return isAuthenticated() && request.auth.token.tenant_id == tid; }
-    function hasRole(role) { return isAuthenticated() && request.auth.token.role == role; }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role != null ? request.auth.token.role : "VIEWER";
+    }
+
+    function tenant() {
+      return request.auth.token.tenant_id != null ? request.auth.token.tenant_id : "default";
+    }
+
+    function isTenant(doc) {
+      return doc.tenant_id == tenant();
+    }
+
+    // Basic role helpers (server still enforces finer logic)
+    function canRead() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP","SUPPORT","VIEWER"].hasAny([role()]);
+    }
+    function canWriteCustomers() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP"].hasAny([role()]);
+    }
+    function canDeleteCustomers() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER"].hasAny([role()]);
+    }
+    function canWriteLogs() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP","SUPPORT"].hasAny([role()]);
+    }
+    function canDeleteLogs() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER"].hasAny([role()]);
+    }
+    function canWriteComplaints() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP","SUPPORT"].hasAny([role()]);
+    }
+    function canDeleteComplaints() {
+      return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER"].hasAny([role()]);
+    }
 
     match /customers/{id} {
-      allow read: if belongsToTenant(resource.data.tenant_id);
-      allow create: if belongsToTenant(request.resource.data.tenant_id) && (hasRole('admin') || hasRole('manager') || hasRole('sales_rep'));
-      allow update: if belongsToTenant(resource.data.tenant_id) && (hasRole('admin') || hasRole('manager'));
-      allow delete: if belongsToTenant(resource.data.tenant_id) && hasRole('admin');
+      allow read: if isSignedIn() && isTenant(resource.data) && canRead();
+      allow create: if isSignedIn() && canWriteCustomers();
+      allow update: if isSignedIn() && isTenant(resource.data) && canWriteCustomers();
+      allow delete: if isSignedIn() && isTenant(resource.data) && canDeleteCustomers();
     }
 
     match /logs/{id} {
-      allow read: if belongsToTenant(resource.data.tenant_id);
-      allow create: if belongsToTenant(request.resource.data.tenant_id) && isAuthenticated();
-      allow update, delete: if belongsToTenant(resource.data.tenant_id) &&
-        (resource.data.createdBy == request.auth.uid || hasRole('admin'));
+      allow read: if isSignedIn() && isTenant(resource.data) && canRead();
+      allow create: if isSignedIn() && canWriteLogs();
+      allow update: if isSignedIn() && isTenant(resource.data) && canWriteLogs();
+      allow delete: if isSignedIn() && isTenant(resource.data) && canDeleteLogs();
     }
 
     match /complaints/{id} {
-      allow read: if belongsToTenant(resource.data.tenant_id);
-      allow create: if belongsToTenant(request.resource.data.tenant_id) && isAuthenticated();
-      allow update: if belongsToTenant(resource.data.tenant_id) && (hasRole('admin') || hasRole('support') || hasRole('manager'));
-      allow delete: if belongsToTenant(resource.data.tenant_id) && hasRole('admin');
+      allow read: if isSignedIn() && isTenant(resource.data) && canRead();
+      allow create: if isSignedIn() && canWriteComplaints();
+      allow update: if isSignedIn() && isTenant(resource.data) && canWriteComplaints();
+      allow delete: if isSignedIn() && isTenant(resource.data) && canDeleteComplaints();
     }
 
-    match /users/{id} {
-      allow read: if belongsToTenant(resource.data.tenant_id) && (hasRole('admin') || hasRole('manager'));
-      allow update, delete: if belongsToTenant(resource.data.tenant_id) && hasRole('admin');
-      allow create: if belongsToTenant(request.resource.data.tenant_id) && hasRole('admin');
+    // Users collection: readable by tenant, writable by admins (server usually writes)
+    match /users/{uid} {
+      allow read: if isSignedIn() && isTenant(resource.data) && canRead();
+      allow write: if isSignedIn() && (role() in ["SUPER_ADMIN","TENANT_ADMIN"]);
     }
   }
 }

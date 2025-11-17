@@ -1,3 +1,5 @@
+# backend/services/user_services.py
+
 """User service for Firestore operations (tenant-aware, RBAC helpers)"""
 from typing import Optional, Dict, Any, List
 
