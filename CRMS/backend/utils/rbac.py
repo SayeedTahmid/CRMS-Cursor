@@ -58,9 +58,52 @@ PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
     }
 }
 
+def normalize_role(role: str) -> str:
+    """
+    Normalize role string to match RBAC constants.
+    Handles various formats: lowercase, uppercase, with/without underscores.
+    """
+    if not role:
+        return VIEWER
+    
+    role_upper = role.upper().strip()
+    
+    # Map common variations to standard roles
+    role_mapping = {
+        "ADMIN": TENANT_ADMIN,  # "admin" -> TENANT_ADMIN
+        "TENANT_ADMIN": TENANT_ADMIN,
+        "SUPER_ADMIN": SUPER_ADMIN,
+        "MANAGER": MANAGER,
+        "SALES_REP": SALES_REP,
+        "SALESREP": SALES_REP,  # Handle without underscore
+        "SUPPORT": SUPPORT,
+        "SUPPORT_AGENT": SUPPORT,  # Map support_agent to SUPPORT
+        "VIEWER": VIEWER,
+    }
+    
+    # Try direct match first
+    if role_upper in role_mapping:
+        return role_mapping[role_upper]
+    
+    # Try to match by prefix or common patterns
+    if "ADMIN" in role_upper:
+        if "SUPER" in role_upper:
+            return SUPER_ADMIN
+        return TENANT_ADMIN
+    if "SUPPORT" in role_upper:
+        return SUPPORT
+    if "SALES" in role_upper:
+        return SALES_REP
+    
+    # Default to VIEWER if no match
+    return VIEWER
+
 def allowed(role: str, resource: str, action: str) -> bool:
-    if role not in ALL_ROLES:
+    # Normalize the role first
+    normalized_role = normalize_role(role)
+    
+    if normalized_role not in ALL_ROLES:
         return False
     resource_rules = PERMISSIONS.get(resource, {})
-    actions = resource_rules.get(role, [])
+    actions = resource_rules.get(normalized_role, [])
     return action in actions

@@ -153,7 +153,9 @@ def delete_file(file_id):
             return jsonify({"error": "Forbidden: cross-tenant access"}), 403
         
         # Check permissions - only owner or admin can delete
-        if file_data.get("uploaded_by") != user_id and request.user.get("role") not in ["admin", "super_admin"]:
+        from utils.rbac import normalize_role, TENANT_ADMIN, SUPER_ADMIN
+        user_role = normalize_role(request.user.get("role", "viewer"))
+        if file_data.get("uploaded_by") != user_id and user_role not in [TENANT_ADMIN, SUPER_ADMIN]:
             return jsonify({"error": "Forbidden: insufficient permissions"}), 403
         
         # Delete from Firebase Storage

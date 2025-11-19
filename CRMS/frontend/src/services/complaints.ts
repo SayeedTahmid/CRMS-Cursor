@@ -138,6 +138,24 @@ export const complaintService = {
    * Delete a complaint
    */
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/complaints/${id}`);
+    try {
+      await api.delete(`/complaints/${id}`);
+    } catch (error: any) {
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete complaint';
+      
+      // Create detailed error message
+      let detailedError = `Delete failed (HTTP ${status || 'unknown'}): ${errorMessage}`;
+      
+      if (status === 403) {
+        detailedError += '\n\nYou do not have permission to delete complaints. Required role: SUPER_ADMIN, TENANT_ADMIN, or MANAGER.';
+      } else if (status === 404) {
+        detailedError += '\n\nThe complaint may not exist or may belong to a different tenant.';
+      } else if (status === 401) {
+        detailedError += '\n\nYour session may have expired. Please log out and log back in.';
+      }
+      
+      throw new Error(detailedError);
+    }
   },
 };

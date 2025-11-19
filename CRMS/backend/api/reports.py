@@ -224,7 +224,9 @@ def generate_complaint_report():
         # Build query
         query = db.collection("complaints").where(filter=FieldFilter("tenant_id", "==", tenant_id))
         
-        if request.user.get("role") == "SALES_REP":
+        from utils.rbac import normalize_role, SALES_REP
+        user_role = normalize_role(request.user.get("role", "viewer"))
+        if user_role == SALES_REP:
             query = query.where(filter=FieldFilter("created_by", "==", uid))
         
         if status:

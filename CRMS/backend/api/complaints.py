@@ -4,7 +4,7 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 from api.auth import require_auth, require_permission,require_role
 from utils.firebase import get_db
-from utils.rbac import SALES_REP
+from utils.rbac import SALES_REP, normalize_role
 
 complaints_bp = Blueprint("complaints", __name__)
 
@@ -35,7 +35,8 @@ def list_complaints():
         q = db.collection("complaints").where(filter=FieldFilter("tenant_id", "==", tenant_id))
 
         # Sales Rep -> own complaints only
-        if request.user.get("role") == SALES_REP:
+        user_role = normalize_role(request.user.get("role", "viewer"))
+        if user_role == SALES_REP:
             q = q.where(filter=FieldFilter("created_by", "==", uid))
 
         if customer_id:
@@ -84,15 +85,52 @@ def list_complaints():
         except Exception as stream_error:
             error_str = str(stream_error)
             if "requires an index" in error_str:
-                return jsonify({
-                    "error": "Firestore index required",
-                    "message": "The query requires a composite index. Please create it in Firebase Console.",
-                    "complaints": [],
-                    "page": page,
-                    "pageSize": page_size,
-                    "hasMore": False,
-                    "total": 0
-                }), 400
+                print(f"⚠️ Index missing for complaints query: {error_str}")
+                # Fallback: try query without order_by and offset
+                try:
+                    fallback_q = db.collection("complaints").where(filter=FieldFilter("tenant_id", "==", tenant_id))
+                    if user_role == SALES_REP:
+                        fallback_q = fallback_q.where(filter=FieldFilter("created_by", "==", uid))
+                    if customer_id:
+                        fallback_q = fallback_q.where(filter=FieldFilter("customer_id", "==", customer_id))
+                    if status:
+                        fallback_q = fallback_q.where(filter=FieldFilter("status", "==", status))
+                    fallback_q = fallback_q.limit(page_size * 2)  # Get more to sort client-side
+                    
+                    fallback_items = []
+                    for doc in fallback_q.stream():
+                        try:
+                            d = doc.to_dict() or {}
+                            fallback_items.append({"id": doc.id, **d})
+                        except Exception as doc_error:
+                            print(f"Error processing complaint {doc.id}: {doc_error}")
+                            continue
+                    
+                    # Sort by created_at client-side
+                    fallback_items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+                    # Apply pagination client-side
+                    start_idx = (page - 1) * page_size
+                    items = fallback_items[start_idx:start_idx + page_size]
+                    
+                    return jsonify({
+                        "complaints": items,
+                        "page": page,
+                        "pageSize": page_size,
+                        "hasMore": len(fallback_items) > start_idx + page_size,
+                        "total": len(fallback_items),
+                        "warning": "Using fallback query due to missing index"
+                    }), 200
+                except Exception as fallback_error:
+                    print(f"Fallback query also failed: {fallback_error}")
+                    return jsonify({
+                        "error": "Firestore index required",
+                        "message": "The query requires a composite index. Please create it in Firebase Console.",
+                        "complaints": [],
+                        "page": page,
+                        "pageSize": page_size,
+                        "hasMore": False,
+                        "total": 0
+                    }), 400
             raise
 
         # Client-side search if search param provided
@@ -140,7 +178,8 @@ def get_complaint(complaint_id):
         if data.get("tenant_id") != tenant_id:
             return jsonify({"error": "Forbidden: cross-tenant access"}), 403
 
-        if request.user.get("role") == SALES_REP and data.get("created_by") != uid:
+        user_role = normalize_role(request.user.get("role", "viewer"))
+        if user_role == SALES_REP and data.get("created_by") != uid:
             return jsonify({"error": "forbidden"}), 403
 
         return jsonify({"id": snap.id, **data}), 200
@@ -154,52 +193,67 @@ def get_complaint(complaint_id):
 @require_auth
 @require_permission("complaints", "create")
 def create_complaint():
-    body = request.get_json(force=True) or {}
-    customer_id = body.get("customerId") or body.get("customer_id")
-    title = body.get("title")
-    description = body.get("description", "")
-    category = body.get("category", "other")
-    severity = body.get("severity", "low")
-    attachments = body.get("attachments", [])
+    try:
+        body = request.get_json(force=True) or {}
+        customer_id = body.get("customerId") or body.get("customer_id")
+        title = body.get("title")
+        description = body.get("description", "")
+        category = body.get("category", "other")
+        severity = body.get("severity", "low")
+        attachments = body.get("attachments", [])
 
-    if _bad(customer_id) or _bad(title):
-        return jsonify({"error": "customerId and title are required"}), 400
+        if _bad(customer_id) or _bad(title):
+            return jsonify({"error": "customerId and title are required"}), 400
 
-    db = get_db()
-    uid = request.user["uid"]
-    tenant_id = request.user.get("tenant_id", "default")
+        db = get_db()
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
 
-    doc_ref = db.collection("complaints").document()
-    ticket_number = f"COMP-{doc_ref.id[:4].upper()}"
+        doc_ref = db.collection("complaints").document()
+        ticket_number = f"COMP-{doc_ref.id[:4].upper()}"
 
-    payload = {
-        "tenant_id": tenant_id,
-        "customer_id": customer_id,
-        "title": title,
-        "description": description,
-        "category": category,
-        "severity": severity,
-        "status": body.get("status", "new"),
-        "priority": body.get("priority", 0),
-        "assigned_to": body.get("assigned_to"),
-        "sla": body.get("sla", {}),
-        "timeline": [],
-        "internal_comments": [],
-        "customer_updates": [],
-        "attachments": attachments,
-        "ticket_number": ticket_number,
-        "created_at": firestore.SERVER_TIMESTAMP,
-        "created_by": uid,
-        "updated_at": firestore.SERVER_TIMESTAMP,
-    }
-    doc_ref.set(payload)
-    payload["id"] = doc_ref.id
-    payload["ticket_number"] = ticket_number
-    return jsonify({
-        "success": True,
-        "data": {"id": doc_ref.id, "ticketNumber": ticket_number, "message": "Complaint created successfully"},
-        "complaint": payload
-    }), 201
+        # Map priority to severity if priority is provided as string
+        priority_value = body.get("priority", severity)
+        if isinstance(priority_value, str):
+            severity = priority_value.lower()
+        elif isinstance(priority_value, (int, float)):
+            # Map numeric priority to severity string
+            priority_map = {0: "low", 1: "medium", 2: "high", 3: "urgent"}
+            severity = priority_map.get(int(priority_value), "medium")
+        
+        payload = {
+            "tenant_id": tenant_id,
+            "customer_id": customer_id,
+            "title": title,
+            "description": description,
+            "category": category,
+            "severity": severity,
+            "status": body.get("status", "new"),
+            "priority": severity,  # Store as string for consistency
+            "assigned_to": body.get("assigned_to"),
+            "sla": body.get("sla", {}),
+            "timeline": [],
+            "internal_comments": [],
+            "customer_updates": [],
+            "attachments": attachments,
+            "ticket_number": ticket_number,
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "created_by": uid,
+            "updated_at": firestore.SERVER_TIMESTAMP,
+        }
+        doc_ref.set(payload)
+        payload["id"] = doc_ref.id
+        payload["ticket_number"] = ticket_number
+        return jsonify({
+            "success": True,
+            "data": {"id": doc_ref.id, "ticketNumber": ticket_number, "message": "Complaint created successfully"},
+            "complaint": payload
+        }), 201
+    except Exception as e:
+        print(f"Error in create_complaint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 # ---------------------------
 # Update status (specific endpoint for status-only updates - must come before full update)
@@ -225,7 +279,8 @@ def update_status(complaint_id):
     if existing.get("tenant_id") != tenant_id:
         return jsonify({"error": "Forbidden: cross-tenant update"}), 403
 
-    if request.user.get("role") == SALES_REP and existing.get("created_by") != uid:
+    user_role = normalize_role(request.user.get("role", "viewer"))
+    if user_role == SALES_REP and existing.get("created_by") != uid:
         return jsonify({"error": "forbidden"}), 403
 
     update = {"status": status, "updated_at": firestore.SERVER_TIMESTAMP}
@@ -271,7 +326,8 @@ def update_complaint(complaint_id):
         if existing.get("tenant_id") != tenant_id:
             return jsonify({"error": "Forbidden: cross-tenant update"}), 403
         
-        if request.user.get("role") == SALES_REP and existing.get("created_by") != uid:
+        user_role = normalize_role(request.user.get("role", "viewer"))
+        if user_role == SALES_REP and existing.get("created_by") != uid:
             return jsonify({"error": "forbidden"}), 403
         
         body = request.get_json(force=True) or {}
@@ -348,10 +404,12 @@ def delete_complaint(complaint_id):
             return jsonify({"error": "Forbidden: cross-tenant"}), 403
 
         # Sales Rep may not delete
-        if request.user.get("role") == SALES_REP:
+        user_role = normalize_role(request.user.get("role", "viewer"))
+        if user_role == SALES_REP:
             return jsonify({"error": "forbidden"}), 403
 
-        ref.update({"status": "closed", "updated_at": firestore.SERVER_TIMESTAMP})
-        return jsonify({"message": "Complaint closed"}), 200
+        # Hard delete - permanently remove from database
+        ref.delete()
+        return jsonify({"message": "Complaint deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

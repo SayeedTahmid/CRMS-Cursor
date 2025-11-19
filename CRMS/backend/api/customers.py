@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from utils.firebase import get_db, verify_token
 from models.customer import Customer
-from api.auth import require_auth
+from api.auth import require_auth, require_permission
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 customers_bp = Blueprint('customers', __name__)
@@ -77,9 +77,15 @@ def list_customers():
         
         # Execute query
         customers = []
+        deleted_ids = set()  # Track any IDs that should be deleted but still appear
         try:
             for doc in query.stream():
                 try:
+                    # Check if document exists (deleted docs might still appear in queries briefly)
+                    if not doc.exists:
+                        print(f"Warning: Customer document {doc.id} does not exist (may have been deleted)")
+                        continue
+                    
                     doc_data = doc.to_dict()
                     if not doc_data:
                         print(f"Warning: Customer document {doc.id} has no data")
@@ -228,6 +234,7 @@ def get_customer(customer_id):
 
 @customers_bp.route('', methods=['POST'])
 @require_auth
+@require_permission("customers", "create")
 def create_customer():
     """Create a new customer"""
     try:
@@ -314,27 +321,50 @@ def create_customer():
 
 @customers_bp.route('/<customer_id>', methods=['PUT'])
 @require_auth
+@require_permission("customers", "update")
 def update_customer(customer_id):
     """Update an existing customer"""
     try:
-        db = get_db()
-        customer_ref = db.collection('customers').document(customer_id)
+        # Validate customer_id first
+        if _bad_id(customer_id):
+            return jsonify({'error': 'customer_id is required'}), 400
         
+        db = get_db()
+        user_id = request.user['uid']
+        
+        # Get user to determine tenant
+        try:
+            user_doc = db.collection('users').document(user_id).get()
+            if not user_doc.exists:
+                tenant_id = "default"
+            else:
+                user_data = user_doc.to_dict()
+                tenant_id = user_data.get('tenant_id', 'default')
+        except Exception as e:
+            print(f"Error getting user {user_id}: {e}")
+            tenant_id = 'default'
+        
+        customer_ref = db.collection('customers').document(customer_id)
         doc = customer_ref.get()
+        
         if not doc.exists:
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        # Check tenant isolation (security)
+        doc_data = doc.to_dict()
+        doc_tenant_id = doc_data.get('tenant_id', 'default')
+        if doc_tenant_id != tenant_id:
             return jsonify({'error': 'Customer not found'}), 404
         
         # Update customer data
         data = request.json
-        customer = Customer.from_dict(customer_id, doc.to_dict())
+        customer = Customer.from_dict(customer_id, doc_data)
         
         # Update fields
         for key, value in data.items():
-            if hasattr(customer, key) and key not in ['id', 'created_at', 'created_by']:
+            if hasattr(customer, key) and key not in ['id', 'created_at', 'created_by', 'tenant_id']:
                 setattr(customer, key, value)
         
-        if _bad_id(customer_id):
-            return jsonify ({'error': 'customer_id is required'}),400
         customer.update_timestamp()
         
         # Save to Firestore
@@ -358,22 +388,89 @@ def update_customer(customer_id):
 
 @customers_bp.route('/<customer_id>', methods=['DELETE'])
 @require_auth
+@require_permission("customers", "delete")
 def delete_customer(customer_id):
     """Delete a customer"""
     try:
-        db = get_db()
-        customer_ref = db.collection('customers').document(customer_id)
+        # Validate customer_id first
+        if _bad_id(customer_id):
+            return jsonify({'error': 'customer_id is required'}), 400
         
+        db = get_db()
+        user_id = request.user['uid']
+        
+        # Get user to determine tenant
+        try:
+            user_doc = db.collection('users').document(user_id).get()
+            if not user_doc.exists:
+                tenant_id = "default"
+            else:
+                user_data = user_doc.to_dict()
+                tenant_id = user_data.get('tenant_id', 'default')
+        except Exception as e:
+            print(f"Error getting user {user_id}: {e}")
+            tenant_id = 'default'
+        
+        customer_ref = db.collection('customers').document(customer_id)
         doc = customer_ref.get()
+        
         if not doc.exists:
             return jsonify({'error': 'Customer not found'}), 404
         
-        # Soft delete - update status instead of actually deleting
-        customer_ref.update({'status': 'archived'})
+        # Check tenant isolation (security)
+        doc_data = doc.to_dict()
+        doc_tenant_id = doc_data.get('tenant_id', 'default')
+        if doc_tenant_id != tenant_id:
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        # Hard delete - permanently remove from database
+        customer_name = doc_data.get('name', 'unknown')
+        print(f"🗑️ Attempting to delete customer: ID={customer_id}, Name={customer_name}, Tenant={doc_tenant_id}")
+        
+        try:
+            # Perform the delete operation using the document reference
+            # Firestore delete() is synchronous and should work immediately
+            customer_ref.delete()
+            print(f"✅ Delete() method called successfully for customer {customer_id}")
+            
+        except Exception as delete_error:
+            error_msg = str(delete_error)
+            print(f"❌ Error during delete operation: {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Failed to delete customer: {error_msg}'}), 500
+        
+        # Verify the delete worked by checking if document still exists
+        # This helps catch any silent failures
+        try:
+            verify_doc = customer_ref.get()
+            if verify_doc.exists:
+                print(f"❌ ERROR: Customer {customer_id} still exists after delete() call!")
+                print(f"   This indicates the delete operation failed silently.")
+                print(f"   Document data: {verify_doc.to_dict()}")
+                # Try one more time with explicit error handling
+                try:
+                    customer_ref.delete()
+                    verify_doc2 = customer_ref.get()
+                    if verify_doc2.exists:
+                        return jsonify({'error': 'Failed to delete customer - document still exists after delete attempt'}), 500
+                    else:
+                        print(f"✅ Second delete attempt succeeded for customer {customer_id}")
+                except Exception as retry_error:
+                    return jsonify({'error': f'Failed to delete customer on retry: {str(retry_error)}'}), 500
+            else:
+                print(f"✅ Verified: Customer {customer_id} successfully deleted from Firestore")
+        except Exception as verify_error:
+            print(f"⚠️ Could not verify deletion (this is OK if delete succeeded): {verify_error}")
+        
+        print(f"✅ Customer {customer_id} ({customer_name}) deleted successfully by user {user_id}")
         
         return jsonify({'message': 'Customer deleted successfully'}), 200
         
     except Exception as e:
+        import traceback
+        print(f"Error in delete_customer: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

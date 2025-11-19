@@ -1,20 +1,6 @@
 {
     "indexes": [
       {
-        "collectionGroup": "users",
-        "queryScope": "COLLECTION",
-        "fields": [
-          { "fieldPath": "email_lower", "order": "ASCENDING" }
-        ]
-      },
-      {
-        "collectionGroup": "users",
-        "queryScope": "COLLECTION",
-        "fields": [
-          { "fieldPath": "tenant_id", "order": "ASCENDING" }
-        ]
-      },
-      {
         "collectionGroup": "customers",
         "queryScope": "COLLECTION",
         "fields": [
@@ -68,6 +54,14 @@
         ]
       },
       {
+        "collectionGroup": "logs",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "tenant_id", "order": "ASCENDING" },
+          { "fieldPath": "created_at", "order": "ASCENDING" }
+        ]
+      },
+      {
         "collectionGroup": "complaints",
         "queryScope": "COLLECTION",
         "fields": [
@@ -82,6 +76,23 @@
         "fields": [
           { "fieldPath": "tenant_id", "order": "ASCENDING" },
           { "fieldPath": "severity", "order": "ASCENDING" },
+          { "fieldPath": "created_at", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "complaints",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "tenant_id", "order": "ASCENDING" },
+          { "fieldPath": "created_at", "order": "DESCENDING" }
+        ]
+      },
+      {
+        "collectionGroup": "complaints",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "tenant_id", "order": "ASCENDING" },
+          { "fieldPath": "created_by", "order": "ASCENDING" },
           { "fieldPath": "created_at", "order": "DESCENDING" }
         ]
       }

@@ -4,7 +4,8 @@ from flask import Blueprint, request, jsonify
 from google.cloud.firestore_v1.base_query import FieldFilter
 from utils.firebase import get_db  # verify_token no longer needed here if require_auth sets request.user
 from models.log import Log
-from api.auth import require_auth
+from api.auth import require_auth, require_permission
+from utils.rbac import normalize_role
 
 logs_bp = Blueprint('logs', __name__)
 
@@ -217,6 +218,7 @@ def update_log(log_id):
 
 @logs_bp.route("/<log_id>", methods=["DELETE"])
 @require_auth
+@require_permission("logs", "delete")
 def delete_log(log_id):
     """Delete a log"""
     try:
@@ -226,13 +228,22 @@ def delete_log(log_id):
         if not log_id or log_id.strip().lower() in {"undefined", "null", "none", ""}:
             return jsonify({"error": "log_id is required"}), 400
 
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
+
         log_ref = db.collection("logs").document(log_id)
 
         doc = log_ref.get()
         if not doc.exists:
             return jsonify({"error": "Log not found"}), 404
 
-        # Delete the log
+        # Check tenant isolation (security)
+        doc_data = doc.to_dict() or {}
+        doc_tenant_id = doc_data.get("tenant_id", "default")
+        if doc_tenant_id != tenant_id:
+            return jsonify({"error": "Log not found"}), 404
+
+        # Hard delete - permanently remove from database
         log_ref.delete()
 
         return jsonify({"message": "Log deleted successfully"}), 200

@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { complaintService } from '../services/complaints';
 import { customerService } from '../services/customers';
 import { Complaint, Customer } from '../types';
-import { ArrowLeftIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { canDeleteComplaint } from '../utils/permissions';
 
 const ComplaintDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +55,47 @@ const ComplaintDetail: React.FC = () => {
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Failed to update status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!canDeleteComplaint(user?.role)) {
+      const userRole = user?.role || 'unknown';
+      alert(`You do not have permission to delete complaints.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
+      return;
+    }
+
+    if (!id || !complaint) return;
+
+    if (!window.confirm(`Are you sure you want to delete complaint "${complaint.subject}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await complaintService.delete(id);
+      navigate('/complaints');
+    } catch (error: any) {
+      console.error('Error deleting complaint:', error);
+      
+      // Build detailed error message
+      const userRole = user?.role || 'unknown';
+      const errorMessage = error.message || error.response?.data?.error || 'Failed to delete complaint';
+      const status = error.response?.status || 'unknown';
+      
+      const detailedMessage = `Failed to delete complaint "${complaint.subject}"\n\n` +
+        `Error: ${errorMessage}\n` +
+        `HTTP Status: ${status}\n` +
+        `Your Role: ${userRole}\n` +
+        `Permission Check: ${canDeleteComplaint(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
+        `If you believe this is an error, please check:\n` +
+        `1. Your role is correctly set in the system\n` +
+        `2. You are logged in with the correct account\n` +
+        `3. The complaint belongs to your tenant`;
+      
+      alert(detailedMessage);
     } finally {
       setUpdating(false);
     }
@@ -307,6 +349,16 @@ const ComplaintDetail: React.FC = () => {
                   >
                     View Customer
                   </Link>
+                )}
+                {canDeleteComplaint(user?.role) && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={updating}
+                    className="w-full flex items-center justify-center px-4 py-2 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <TrashIcon className="w-5 h-5 mr-2" />
+                    Delete Complaint
+                  </button>
                 )}
               </div>
             </div>

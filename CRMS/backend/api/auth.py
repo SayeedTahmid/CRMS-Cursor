@@ -1,7 +1,18 @@
 # backend/api/auth.py
 """
 Authentication API endpoints (compatible with frontend AuthContext)
+
+RBAC Bootstrap:
+    Set FIRST_SUPER_ADMIN_EMAIL environment variable to the email address of the user
+    that should automatically become super_admin on first login/registration.
+    All other users will default to viewer role.
+    
+    Example: FIRST_SUPER_ADMIN_EMAIL=admin@example.com
+    
+    After the first super_admin is created, all role changes should be handled through
+    the existing API endpoints in backend/api/users.py (/users/<uid>/role and /users/invite).
 """
+import os
 from flask import Blueprint, request, jsonify, current_app
 from functools import wraps
 from utils.firebase import verify_token, get_db, get_user_by_email, create_user
@@ -10,6 +21,61 @@ from datetime import datetime
 from utils.rbac import allowed, ALL_ROLES
 
 auth_bp = Blueprint("auth", __name__)
+
+
+# ==============================================================
+# 🎯 Initial Role Helper (Bootstrap Logic)
+# ==============================================================
+def _get_initial_role(email: str) -> str:
+    """
+    Determine the initial role for a user based on their email.
+    
+    If the email matches FIRST_SUPER_ADMIN_EMAIL (case-insensitive), returns super_admin.
+    Otherwise, returns viewer (default role).
+    
+    Args:
+        email: User's email address
+        
+    Returns:
+        Role string (e.g., "super_admin" or "viewer")
+    """
+    if not email:
+        return User.ROLE_VIEWER
+    
+    # Get the configured super admin email from environment
+    first_admin_email = os.getenv("FIRST_SUPER_ADMIN_EMAIL", "").strip().lower()
+    user_email = email.strip().lower()
+    
+    # Case-insensitive comparison
+    if first_admin_email and user_email == first_admin_email:
+        return User.ROLE_SUPER_ADMIN
+    
+    return User.ROLE_VIEWER
+
+
+def _set_firebase_custom_claims(uid: str, role: str, tenant_id: str) -> bool:
+    """
+    Set Firebase custom claims for a user (best-effort, non-blocking).
+    
+    This keeps Firebase custom claims in sync with Firestore user documents.
+    If setting claims fails, logs a warning but does not raise an exception.
+    
+    Args:
+        uid: Firebase user UID
+        role: User role (lowercase, e.g., "super_admin", "viewer")
+        tenant_id: Tenant ID
+        
+    Returns:
+        True if claims were set successfully, False otherwise
+    """
+    try:
+        from firebase_admin import auth as fb_auth
+        fb_auth.set_custom_user_claims(uid, {"role": role, "tenant_id": tenant_id})
+        return True
+    except Exception as e:
+        # Best-effort: log warning but don't crash the request
+        print(f"Warning: Failed to set Firebase custom claims for {uid}: {e}")
+        return False
 
 
 # ==============================================================
@@ -31,22 +97,28 @@ def require_auth(f):
         request.user = decoded_token
         
         # Get user role from Firestore (with timeout protection)
+        # Also check custom claims in token as fallback
+        role_from_claims = decoded_token.get("role") or (decoded_token.get("claims") or {}).get("role")
+        tenant_from_claims = decoded_token.get("tenant_id") or (decoded_token.get("claims") or {}).get("tenant_id")
+        
         try:
             db = get_db()
             user_doc = db.collection("users").document(decoded_token["uid"]).get()
             if user_doc.exists:
                 user_data = user_doc.to_dict()
-                request.user["role"] = user_data.get("role", "viewer")
-                request.user["tenant_id"] = user_data.get("tenant_id", "default")
+                # Store the raw role (may be lowercase or various formats)
+                # Prefer Firestore role, fallback to token claims, then default
+                request.user["role"] = user_data.get("role") or role_from_claims or User.ROLE_VIEWER
+                request.user["tenant_id"] = user_data.get("tenant_id") or tenant_from_claims or "default"
             else:
-                # User doesn't exist in Firestore - use defaults
-                request.user["role"] = "viewer"
-                request.user["tenant_id"] = "default"
+                # User doesn't exist in Firestore - use claims or defaults
+                request.user["role"] = role_from_claims or User.ROLE_VIEWER
+                request.user["tenant_id"] = tenant_from_claims or "default"
         except Exception as e:
-            # If Firestore lookup fails, use defaults (don't block the request)
+            # If Firestore lookup fails, use claims or defaults (don't block the request)
             print(f"Warning: Failed to get user role from Firestore: {e}")
-            request.user["role"] = "viewer"
-            request.user["tenant_id"] = "default"
+            request.user["role"] = role_from_claims or User.ROLE_VIEWER
+            request.user["tenant_id"] = tenant_from_claims or "default"
         
         return f(*args, **kwargs)
 
@@ -62,13 +134,16 @@ def require_permission(resource: str, action: str):
         @wraps(f)
         @require_auth
         def decorated_function(*args, **kwargs):
-            role = request.user.get("role", "viewer").upper()
+            from utils.rbac import normalize_role, allowed
+            role = request.user.get("role", User.ROLE_VIEWER)
+            normalized_role = normalize_role(role)
             
-            if not allowed(role, resource, action):
+            if not allowed(normalized_role, resource, action):
                 return jsonify({
                     "error": "Insufficient permissions",
                     "required": f"{resource}:{action}",
-                    "role": role
+                    "role": role,
+                    "normalized_role": normalized_role
                 }), 403
             
             return f(*args, **kwargs)
@@ -85,14 +160,18 @@ def require_role(*allowed_roles):
         @wraps(f)
         @require_auth
         def decorated_function(*args, **kwargs):
-            role = request.user.get("role", "viewer").upper()
-            allowed_roles_upper = [r.upper() for r in allowed_roles]
+            from utils.rbac import normalize_role
+            role = request.user.get("role", User.ROLE_VIEWER)
+            normalized_role = normalize_role(role)
+            # Normalize allowed roles too
+            allowed_roles_normalized = [normalize_role(r) for r in allowed_roles]
             
-            if role not in allowed_roles_upper:
+            if normalized_role not in allowed_roles_normalized:
                 return jsonify({
                     "error": "Insufficient role",
                     "required": allowed_roles,
-                    "current": role
+                    "current": role,
+                    "normalized_current": normalized_role
                 }), 403
             
             return f(*args, **kwargs)
@@ -151,20 +230,26 @@ def verify():
                     "uid": uid,
                     "email": decoded_token.get("email"),
                     "display_name": decoded_token.get("name") or decoded_token.get("email"),
-                    "role": "viewer",
+                    "role": User.ROLE_VIEWER,
                     "tenant_id": "default"
                 },
                 "message": "Authenticated (Firestore unavailable, using defaults)"
             }), 200
 
-        # If user doesn’t exist → create minimal placeholder profile
+        # If user doesn't exist → create minimal placeholder profile with initial role
         if not user_doc.exists:
+            user_email = decoded_token.get("email", "")
+            tenant_id = "default"
+            
+            # Determine initial role based on email
+            initial_role = _get_initial_role(user_email)
+            
             minimal_user = {
                 "firebase_uid": uid,
-                "email": decoded_token.get("email"),
-                "display_name": decoded_token.get("name") or decoded_token.get("email"),
-                "role": "viewer",
-                "tenant_id": "default",
+                "email": user_email,
+                "display_name": decoded_token.get("name") or user_email,
+                "role": initial_role,
+                "tenant_id": tenant_id,
                 "is_active": True,
                 "is_verified": True,
                 "created_at": datetime.utcnow().isoformat(),
@@ -172,6 +257,10 @@ def verify():
                 "created_by_source": "auto_verify"
             }
             user_ref.set(minimal_user)
+            
+            # Best-effort: set Firebase custom claims to keep in sync
+            _set_firebase_custom_claims(uid, initial_role, tenant_id)
+            
             return jsonify({
                 "authenticated": True,
                 "user": minimal_user,
@@ -271,13 +360,16 @@ def register():
                 "user": {"id": existing_doc.id, **user_data}
             }), 200
 
+        # Determine initial role based on email
+        initial_role = _get_initial_role(email)
+        
         # Create Firestore user record (Firebase user already exists)
         user = User(
             email=email,
             display_name=display_name,
             tenant_id=tenant_id,
             firebase_uid=firebase_uid,
-            role=User.ROLE_VIEWER,
+            role=initial_role,
             is_active=True,
             is_verified=False
         )
@@ -290,7 +382,7 @@ def register():
             "email": email,
             "display_name": display_name,
             "displayName": display_name,  # camelCase for frontend
-            "role": User.ROLE_VIEWER,
+            "role": initial_role,
             "tenant_id": tenant_id,
             "tenantId": tenant_id,  # camelCase
             "firebase_uid": firebase_uid,
@@ -302,6 +394,9 @@ def register():
             **user_dict
         }
         user_ref.set(user_dict_combined)
+        
+        # Best-effort: set Firebase custom claims to keep in sync
+        _set_firebase_custom_claims(firebase_uid, initial_role, tenant_id)
 
         return jsonify({
             "message": "User registered successfully",

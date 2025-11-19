@@ -147,10 +147,28 @@ export const customerService = {
   },
 
   /**
-   * Delete a customer (soft delete)
+   * Delete a customer (permanently removed from database)
    */
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/customers/${id}`);
+    try {
+      await api.delete(`/customers/${id}`);
+    } catch (error: any) {
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete customer';
+      
+      // Create detailed error message
+      let detailedError = `Delete failed (HTTP ${status || 'unknown'}): ${errorMessage}`;
+      
+      if (status === 403) {
+        detailedError += '\n\nYou do not have permission to delete customers. Required role: SUPER_ADMIN, TENANT_ADMIN, or MANAGER.';
+      } else if (status === 404) {
+        detailedError += '\n\nThe customer may not exist or may belong to a different tenant.';
+      } else if (status === 401) {
+        detailedError += '\n\nYour session may have expired. Please log out and log back in.';
+      }
+      
+      throw new Error(detailedError);
+    }
   },
 
   /**

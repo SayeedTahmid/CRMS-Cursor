@@ -7,7 +7,8 @@ import { complaintService } from '../services/complaints';
 import { Complaint } from '../types';
 import ComplaintKanban from '../components/ComplaintKanban';
 import Pagination from '../components/Pagination';
-import { ClipboardDocumentListIcon, PlusIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
+import { ClipboardDocumentListIcon, PlusIcon, Squares2X2Icon, ListBulletIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { canDeleteComplaint } from '../utils/permissions';
 
 const Complaints: React.FC = () => {
   const { user, logout } = useAuth();
@@ -61,6 +62,46 @@ const Complaints: React.FC = () => {
     setCurrentPage(1); // Reset to first page when changing page size
   };
 
+  const handleDelete = async (complaintId: string, complaintSubject: string) => {
+    if (!canDeleteComplaint(user?.role)) {
+      const userRole = user?.role || 'unknown';
+      alert(`You do not have permission to delete complaints.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete complaint "${complaintSubject}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await complaintService.delete(complaintId);
+      // Reload complaints list
+      await loadComplaints();
+    } catch (error: any) {
+      console.error('Error deleting complaint:', error);
+      
+      // Build detailed error message
+      const userRole = user?.role || 'unknown';
+      const errorMessage = error.message || error.response?.data?.error || 'Failed to delete complaint';
+      const status = error.response?.status || 'unknown';
+      
+      const detailedMessage = `Failed to delete complaint "${complaintSubject}"\n\n` +
+        `Error: ${errorMessage}\n` +
+        `HTTP Status: ${status}\n` +
+        `Your Role: ${userRole}\n` +
+        `Permission Check: ${canDeleteComplaint(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
+        `If you believe this is an error, please check:\n` +
+        `1. Your role is correctly set in the system\n` +
+        `2. You are logged in with the correct account\n` +
+        `3. The complaint belongs to your tenant`;
+      
+      alert(detailedMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new':
@@ -78,15 +119,21 @@ const Complaints: React.FC = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
+  const getPriorityColor = (priority: string | number | undefined) => {
+    if (priority === undefined || priority === null) return 'text-gray-400';
+    const priorityStr = priority.toString().toLowerCase();
+    switch (priorityStr) {
       case 'urgent':
+      case '3':
         return 'text-red-400';
       case 'high':
+      case '2':
         return 'text-orange-400';
       case 'medium':
+      case '1':
         return 'text-yellow-400';
       case 'low':
+      case '0':
         return 'text-green-400';
       default:
         return 'text-gray-400';
@@ -202,42 +249,61 @@ const Complaints: React.FC = () => {
             {complaints.map((complaint) => (
               <div
                 key={complaint.id}
-                className="bg-dark-bg-card rounded-lg p-6 border border-border hover:border-primary-purple transition-colors cursor-pointer"
-                onClick={() => navigate(`/complaints/${complaint.id}`)}
+                className="bg-dark-bg-card rounded-lg p-6 border border-border hover:border-primary-purple transition-colors"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-text-primary mb-1">{complaint.subject}</h3>
-                    <p className="text-sm text-text-secondary line-clamp-2">{complaint.description}</p>
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/complaints/${complaint.id}`)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-text-primary mb-1">{complaint.subject}</h3>
+                      <p className="text-sm text-text-secondary line-clamp-2">{complaint.description}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`px-3 py-1 text-xs font-medium rounded ${getStatusColor(complaint.status)}`}>
+                        {complaint.status.replace('_', ' ')}
+                      </span>
+                      <span className={`text-xs font-medium ${getPriorityColor(complaint.priority || complaint.severity || 'medium')}`}>
+                        {(complaint.priority || complaint.severity || 'medium').toString().toUpperCase()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`px-3 py-1 text-xs font-medium rounded ${getStatusColor(complaint.status)}`}>
-                      {complaint.status.replace('_', ' ')}
-                    </span>
-                    <span className={`text-xs font-medium ${getPriorityColor(complaint.priority)}`}>
-                      {complaint.priority.toUpperCase()}
-                    </span>
+                  <div className="flex items-center justify-between text-sm text-text-secondary">
+                    <div className="flex items-center gap-4">
+                      {(complaint as any).ticket_number && (
+                        <span className="font-mono">#{(complaint as any).ticket_number}</span>
+                      )}
+                      {complaint.created_date && (
+                        <span>{new Date(complaint.created_date).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                    {complaint.customer_id && (
+                      <Link
+                        to={`/customers/${complaint.customer_id}`}
+                        className="text-primary-purple hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View Customer →
+                      </Link>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-sm text-text-secondary">
-                  <div className="flex items-center gap-4">
-                    {(complaint as any).ticket_number && (
-                      <span className="font-mono">#{(complaint as any).ticket_number}</span>
-                    )}
-                    {complaint.created_date && (
-                      <span>{new Date(complaint.created_date).toLocaleDateString()}</span>
-                    )}
-                  </div>
-                  {complaint.customer_id && (
-                    <Link
-                      to={`/customers/${complaint.customer_id}`}
-                      className="text-primary-purple hover:underline"
-                      onClick={(e) => e.stopPropagation()}
+                {canDeleteComplaint(user?.role) && complaint.id && (
+                  <div className="mt-4 pt-4 border-t border-border flex justify-end">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(complaint.id!, complaint.subject || 'this complaint');
+                      }}
+                      className="flex items-center px-3 py-1 text-sm text-red-400 hover:text-red-300 transition-colors"
+                      title="Delete complaint"
                     >
-                      View Customer →
-                    </Link>
-                  )}
-                </div>
+                      <TrashIcon className="w-4 h-4 mr-1" />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

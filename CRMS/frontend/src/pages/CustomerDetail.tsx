@@ -5,7 +5,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { customerService } from '../services/customers';
 import { Customer, Log } from '../types';
-import { ArrowLeftIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { canDeleteCustomer } from '../utils/permissions';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,6 +56,54 @@ const CustomerDetail: React.FC = () => {
       setLogs(Array.isArray(logsData) ? logsData : (logsData.logs || []));
     } catch (error) {
       console.error('Error loading logs:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!canDeleteCustomer(user?.role)) {
+      const userRole = user?.role || 'unknown';
+      alert(`You do not have permission to delete customers.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
+      return;
+    }
+
+    if (!customer) return;
+
+    if (!window.confirm(`Are you sure you want to delete "${customer.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      if (id) {
+        console.log(`🗑️ Deleting customer: ${customer.name} (ID: ${id})`);
+        
+        await customerService.delete(id);
+        
+        console.log(`✅ Customer deleted successfully: ${customer.name} (ID: ${id})`);
+        
+        // Show success message before navigating
+        alert(`Customer "${customer.name}" has been permanently deleted.`);
+        
+        navigate('/customers');
+      }
+    } catch (error: any) {
+      console.error('❌ Error deleting customer:', error);
+      
+      // Build detailed error message
+      const userRole = user?.role || 'unknown';
+      const errorMessage = error.message || error.response?.data?.error || 'Failed to delete customer';
+      const status = error.response?.status || 'unknown';
+      
+      const detailedMessage = `Failed to delete customer "${customer.name}"\n\n` +
+        `Error: ${errorMessage}\n` +
+        `HTTP Status: ${status}\n` +
+        `Your Role: ${userRole}\n` +
+        `Permission Check: ${canDeleteCustomer(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
+        `If you believe this is an error, please check:\n` +
+        `1. Your role is correctly set in the system\n` +
+        `2. You are logged in with the correct account\n` +
+        `3. The customer belongs to your tenant`;
+      
+      alert(detailedMessage);
     }
   };
 
@@ -112,9 +161,9 @@ const CustomerDetail: React.FC = () => {
         {/* Customer Info */}
         <div className="bg-dark-bg-card rounded-lg p-6 border border-border mb-6">
           <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h2 className="text-3xl font-bold text-text-primary">{customer.name}</h2>
-              <p className="text-text-secondary">{customer.company || 'No company'}</p>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-3xl font-bold text-text-primary truncate">{customer.name}</h2>
+              <p className="text-text-secondary truncate">{customer.company || 'No company'}</p>
             </div>
             <div className="flex items-center gap-3">
               <span className={`px-3 py-1 text-sm font-medium rounded ${
@@ -131,6 +180,16 @@ const CustomerDetail: React.FC = () => {
                 <PencilIcon className="w-5 h-5 mr-2" />
                 Edit
               </button>
+              {canDeleteCustomer(user?.role) && (
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center px-4 py-2 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors"
+                  title="Delete customer"
+                >
+                  <TrashIcon className="w-5 h-5 mr-2" />
+                  Delete
+                </button>
+              )}
             </div>
           </div>
 

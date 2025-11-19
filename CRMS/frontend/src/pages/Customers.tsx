@@ -5,7 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { customerService } from '../services/customers';
 import { Customer } from '../types';
-import { UserGroupIcon, PlusIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { canDeleteCustomer } from '../utils/permissions';
 
 const Customers: React.FC = () => {
   const { user, logout } = useAuth();
@@ -49,6 +50,91 @@ const Customers: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     loadCustomers();
+  };
+
+  const handleDelete = async (customerId: string, customerName: string) => {
+    if (!canDeleteCustomer(user?.role)) {
+      const userRole = user?.role || 'unknown';
+      alert(`You do not have permission to delete customers.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
+      return;
+    }
+
+    if (!customerId || customerId.trim() === '') {
+      alert(`Cannot delete customer: Missing customer ID.\n\nCustomer name: ${customerName}`);
+      console.error('❌ Delete failed: Missing customer ID', { customerId, customerName });
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete "${customerName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log(`🗑️ Deleting customer: ${customerName} (ID: ${customerId})`);
+      
+      await customerService.delete(customerId);
+      
+      console.log(`✅ Customer deleted successfully: ${customerName} (ID: ${customerId})`);
+      
+      // Remove from local state immediately for better UX
+      const initialCount = customers.length;
+      let wasRemoved = false;
+      setCustomers(prevCustomers => {
+        const filtered = prevCustomers.filter(c => {
+          if (c.id === customerId) {
+            wasRemoved = true;
+            return false;
+          }
+          return true;
+        });
+        console.log(`📊 Updated customer list: ${prevCustomers.length} -> ${filtered.length} customers (removed: ${customerId})`);
+        if (!wasRemoved) {
+          console.warn(`⚠️ Customer ${customerId} was not found in the list to remove! Current IDs:`, prevCustomers.map(c => c.id));
+        }
+        return filtered;
+      });
+      setTotal(prevTotal => Math.max(0, prevTotal - 1));
+      
+      // Reload customers list to ensure consistency with backend
+      console.log('🔄 Reloading customers list from backend...');
+      await loadCustomers();
+      
+      console.log(`✅ Delete complete. Initial count: ${initialCount}, Customer removed from UI: ${wasRemoved}`);
+      
+      // Show success message
+      alert(`Customer "${customerName}" has been permanently deleted.`);
+    } catch (error: any) {
+      console.error('❌ Error deleting customer:', error);
+      console.error('❌ Error details:', {
+        customerId,
+        customerName,
+        errorMessage: error.message,
+        status: error.response?.status,
+        responseData: error.response?.data
+      });
+      
+      // Build detailed error message
+      const userRole = user?.role || 'unknown';
+      const errorMessage = error.message || error.response?.data?.error || 'Failed to delete customer';
+      const status = error.response?.status || 'unknown';
+      
+      const detailedMessage = `Failed to delete customer "${customerName}"\n\n` +
+        `Error: ${errorMessage}\n` +
+        `HTTP Status: ${status}\n` +
+        `Customer ID: ${customerId}\n` +
+        `Your Role: ${userRole}\n` +
+        `Permission Check: ${canDeleteCustomer(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
+        `If you believe this is an error, please check:\n` +
+        `1. Your role is correctly set in the system\n` +
+        `2. You are logged in with the correct account\n` +
+        `3. The customer belongs to your tenant\n` +
+        `4. Check the browser console for more details`;
+      
+      alert(detailedMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -171,7 +257,7 @@ const Customers: React.FC = () => {
                     )}
                   </div>
                 </Link>
-                <div className="mt-4 pt-4 border-t border-border flex justify-end">
+                <div className="mt-4 pt-4 border-t border-border flex justify-end gap-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -187,6 +273,19 @@ const Customers: React.FC = () => {
                     <PencilIcon className="w-4 h-4 mr-1" />
                     Edit
                   </button>
+                  {canDeleteCustomer(user?.role) && customer.id && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(customer.id!, customer.name || 'this customer');
+                      }}
+                      className="flex items-center px-3 py-1 text-sm text-red-400 hover:text-red-300 transition-colors"
+                      title="Delete customer"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-1" />
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

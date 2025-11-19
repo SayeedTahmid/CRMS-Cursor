@@ -55,7 +55,25 @@ export const logService = {
    * Delete a log
    */
   delete: async (id: string): Promise<void> => {
-    await api.delete(`/logs/${id}`);
+    try {
+      await api.delete(`/logs/${id}`);
+    } catch (error: any) {
+      const status = error.response?.status;
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete log';
+      
+      // Create detailed error message
+      let detailedError = `Delete failed (HTTP ${status || 'unknown'}): ${errorMessage}`;
+      
+      if (status === 403) {
+        detailedError += '\n\nYou do not have permission to delete logs. Required role: SUPER_ADMIN, TENANT_ADMIN, or MANAGER.';
+      } else if (status === 404) {
+        detailedError += '\n\nThe log may not exist or may belong to a different tenant.';
+      } else if (status === 401) {
+        detailedError += '\n\nYour session may have expired. Please log out and log back in.';
+      }
+      
+      throw new Error(detailedError);
+    }
   },
 };
 
@@ -77,4 +95,11 @@ export async function listLogs(params: ListLogsParams = {}): Promise<{ logs: Log
     limit: params.limit || 20,
     returned: logs.length,
   };
+}
+
+/**
+ * Delete a log (wrapper for convenience)
+ */
+export async function deleteLog(id: string): Promise<void> {
+  return logService.delete(id);
 }

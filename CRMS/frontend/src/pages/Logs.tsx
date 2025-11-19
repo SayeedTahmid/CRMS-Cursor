@@ -7,10 +7,17 @@ import { useAuth } from "../contexts/AuthContext";
 
 const LOG_TYPES = ["call", "email", "meeting", "note", "task"];
 
-const canCreate = (role?: string) =>
-  ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP","SUPPORT"].includes(role || "VIEWER");
-const canDelete = (role?: string) =>
-  ["SUPER_ADMIN","TENANT_ADMIN","MANAGER"].includes(role || "VIEWER");
+import { normalizeRole } from "../utils/permissions";
+
+const canCreate = (role?: string) => {
+  const normalized = normalizeRole(role);
+  return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP","SUPPORT"].includes(normalized);
+};
+
+const canDelete = (role?: string) => {
+  const normalized = normalizeRole(role);
+  return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER"].includes(normalized);
+};
 
 export default function LogsPage() {
   const { user, authenticated, loading } = useAuth();
@@ -252,6 +259,12 @@ export default function LogsPage() {
                       <button
                         className="ml-auto text-xs text-red-300 hover:text-red-200"
                         onClick={async () => {
+                          if (!canDelete(user?.role)) {
+                            const userRole = user?.role || 'unknown';
+                            alert(`You do not have permission to delete logs.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
+                            return;
+                          }
+                          
                           if (!confirm("Delete this log?")) return;
                           try {
                             await deleteLog(log.id);
@@ -259,7 +272,24 @@ export default function LogsPage() {
                             next.set("page", "1");
                             setSp(next, { replace: true });
                           } catch (e: any) {
-                            alert(e?.message || "Delete failed");
+                            console.error('Error deleting log:', e);
+                            
+                            // Build detailed error message
+                            const userRole = user?.role || 'unknown';
+                            const errorMessage = e?.message || e?.response?.data?.error || 'Failed to delete log';
+                            const status = e?.response?.status || 'unknown';
+                            
+                            const detailedMessage = `Failed to delete log\n\n` +
+                              `Error: ${errorMessage}\n` +
+                              `HTTP Status: ${status}\n` +
+                              `Your Role: ${userRole}\n` +
+                              `Permission Check: ${canDelete(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
+                              `If you believe this is an error, please check:\n` +
+                              `1. Your role is correctly set in the system\n` +
+                              `2. You are logged in with the correct account\n` +
+                              `3. The log belongs to your tenant`;
+                            
+                            alert(detailedMessage);
                           }
                         }}
                       >

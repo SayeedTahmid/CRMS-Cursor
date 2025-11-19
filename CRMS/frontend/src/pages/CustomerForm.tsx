@@ -31,6 +31,7 @@ const CustomerForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [newTag, setNewTag] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -47,9 +48,140 @@ const CustomerForm: React.FC = () => {
     }
   };
 
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'name':
+        if (!value || value.trim().length === 0) {
+          return 'Name is required';
+        }
+        if (value.trim().length < 2) {
+          return 'Name must be at least 2 characters';
+        }
+        if (value.length > 80) {
+          return 'Name must be at most 80 characters';
+        }
+        return '';
+      
+      case 'company':
+        if (value.length > 80) {
+          return 'Company must be at most 80 characters';
+        }
+        return '';
+      
+      case 'email':
+        if (!value || value.trim().length === 0) {
+          return 'Email is required';
+        }
+        if (value.length > 120) {
+          return 'Email must be at most 120 characters';
+        }
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(value)) {
+          return 'Please enter a valid email address';
+        }
+        return '';
+      
+      case 'phone':
+        if (value && value.trim().length > 0) {
+          if (value.startsWith('-')) {
+            return 'Phone number cannot be negative.';
+          }
+          // Remove spaces and + for digit counting
+          const digitsOnly = value.replace(/[\s+]/g, '');
+          const digitCount = digitsOnly.replace(/\D/g, '').length;
+          if (digitCount > 0 && digitCount < 7) {
+            return 'Phone number must contain at least 7 digits';
+          }
+          if (digitCount > 20) {
+            return 'Phone number must contain at most 20 digits';
+          }
+          // Only allow digits, spaces, and +
+          const phonePattern = /^[\d\s+]+$/;
+          if (!phonePattern.test(value)) {
+            return 'Phone number can only contain digits, spaces, and +';
+          }
+        }
+        return '';
+      
+      case 'postal_code':
+        if (value && value.trim().length > 0) {
+          if (value.startsWith('-')) {
+            return 'Postal code cannot be negative.';
+          }
+          if (!/^\d+$/.test(value)) {
+            return 'Postal code can only contain digits';
+          }
+          if (value.length < 3) {
+            return 'Postal code must be at least 3 digits';
+          }
+          if (value.length > 10) {
+            return 'Postal code must be at most 10 digits';
+          }
+        }
+        return '';
+      
+      case 'city':
+      case 'state':
+      case 'country':
+      case 'industry':
+      case 'type':
+        if (value.length > 60) {
+          return `${name.charAt(0).toUpperCase() + name.slice(1)} must be at most 60 characters`;
+        }
+        return '';
+      
+      case 'notes':
+        if (value.length > 1000) {
+          return 'Notes must be at most 1000 characters';
+        }
+        return '';
+      
+      default:
+        return '';
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Validate all fields
+    errors.name = validateField('name', formData.name || '');
+    errors.email = validateField('email', formData.email || '');
+    errors.company = validateField('company', formData.company || '');
+    errors.phone = validateField('phone', formData.phone || '');
+    errors.postal_code = validateField('postal_code', formData.postal_code || '');
+    errors.city = validateField('city', formData.city || '');
+    errors.state = validateField('state', formData.state || '');
+    errors.country = validateField('country', formData.country || '');
+    errors.industry = validateField('industry', formData.industry || '');
+    errors.notes = validateField('notes', formData.notes || '');
+    
+    // Remove empty error messages
+    Object.keys(errors).forEach(key => {
+      if (!errors[key]) {
+        delete errors[key];
+      }
+    });
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Validate field on change
+    const error = validateField(name, value);
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      if (error) {
+        newErrors[name] = error;
+      } else {
+        delete newErrors[name];
+      }
+      return newErrors;
+    });
   };
 
   const handleAddTag = () => {
@@ -72,6 +204,12 @@ const CustomerForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -154,10 +292,18 @@ const CustomerForm: React.FC = () => {
                   id="name"
                   name="name"
                   required
+                  maxLength={80}
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.name 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.name && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -168,24 +314,41 @@ const CustomerForm: React.FC = () => {
                   type="text"
                   id="company"
                   name="company"
+                  maxLength={80}
                   value={formData.company || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.company 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.company && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.company}</p>
+                )}
               </div>
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-text-primary mb-1">
-                  Email
+                  Email *
                 </label>
                 <input
                   type="email"
                   id="email"
                   name="email"
+                  required
+                  maxLength={120}
                   value={formData.email || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.email 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.email && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.email}</p>
+                )}
               </div>
 
               <div>
@@ -196,10 +359,18 @@ const CustomerForm: React.FC = () => {
                   type="tel"
                   id="phone"
                   name="phone"
+                  maxLength={20}
                   value={formData.phone || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.phone 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.phone && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.phone}</p>
+                )}
               </div>
 
               <div>
@@ -210,10 +381,18 @@ const CustomerForm: React.FC = () => {
                   type="text"
                   id="industry"
                   name="industry"
+                  maxLength={60}
                   value={formData.industry || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.industry 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.industry && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.industry}</p>
+                )}
               </div>
 
               <div>
@@ -278,10 +457,18 @@ const CustomerForm: React.FC = () => {
                   type="text"
                   id="city"
                   name="city"
+                  maxLength={60}
                   value={formData.city || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.city 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.city && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.city}</p>
+                )}
               </div>
 
               <div>
@@ -292,10 +479,18 @@ const CustomerForm: React.FC = () => {
                   type="text"
                   id="state"
                   name="state"
+                  maxLength={60}
                   value={formData.state || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.state 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.state && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.state}</p>
+                )}
               </div>
 
               <div>
@@ -306,10 +501,18 @@ const CustomerForm: React.FC = () => {
                   type="text"
                   id="country"
                   name="country"
+                  maxLength={60}
                   value={formData.country || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.country 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.country && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.country}</p>
+                )}
               </div>
 
               <div>
@@ -320,10 +523,18 @@ const CustomerForm: React.FC = () => {
                   type="text"
                   id="postal_code"
                   name="postal_code"
+                  maxLength={10}
                   value={formData.postal_code || ''}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                    validationErrors.postal_code 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-border focus:ring-primary-purple'
+                  }`}
                 />
+                {validationErrors.postal_code && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.postal_code}</p>
+                )}
               </div>
             </div>
           </div>
@@ -376,11 +587,22 @@ const CustomerForm: React.FC = () => {
               id="notes"
               name="notes"
               rows={4}
+              maxLength={1000}
               value={formData.notes || ''}
               onChange={handleChange}
-              className="w-full px-3 py-2 bg-dark-bg border border-border rounded-md text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-purple"
+              className={`w-full px-3 py-2 bg-dark-bg border rounded-md text-text-primary focus:outline-none focus:ring-2 ${
+                validationErrors.notes 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-border focus:ring-primary-purple'
+              }`}
               placeholder="Add any additional notes about this customer..."
             />
+            {validationErrors.notes && (
+              <p className="mt-1 text-sm text-red-400">{validationErrors.notes}</p>
+            )}
+            <p className="mt-1 text-xs text-text-secondary">
+              {formData.notes?.length || 0} / 1000 characters
+            </p>
           </div>
 
           {/* Form Actions */}
@@ -394,7 +616,7 @@ const CustomerForm: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || Object.keys(validationErrors).length > 0 || !formData.name || !formData.email}
               className="px-6 py-2 bg-primary-purple text-white rounded-md hover:bg-secondary-purple transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Saving...' : (isEditMode ? 'Update Customer' : 'Create Customer')}
