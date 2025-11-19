@@ -65,8 +65,71 @@ def list_logs():
             print(f"Error executing log query: {e}")
             return jsonify({"error": f"Failed to query logs: {str(e)}"}), 500
 
-        # Sort by date descending (if log_date missing, treat as empty string)
-        logs.sort(key=lambda x: x.get("log_date", ""), reverse=True)
+        # Sort by date descending
+        # Convert all dates to timestamps first to avoid type comparison errors
+        from datetime import datetime
+        
+        def normalize_date_to_timestamp(date_value):
+            """Convert any date format to a float timestamp for comparison"""
+            if date_value is None:
+                return 0.0
+            
+            # Try to call timestamp() method if it exists (works for both Python datetime and Firestore datetime)
+            if hasattr(date_value, 'timestamp'):
+                try:
+                    return float(date_value.timestamp())
+                except:
+                    pass
+            
+            # Handle Python datetime objects (fallback if timestamp() doesn't work)
+            if isinstance(date_value, datetime):
+                try:
+                    return float(date_value.timestamp())
+                except:
+                    return 0.0
+            
+            # Handle string dates
+            if isinstance(date_value, str):
+                try:
+                    # Try ISO format first
+                    if 'T' in date_value:
+                        dt_str = date_value.replace('Z', '+00:00').split('.')[0]
+                        if '+' in dt_str or dt_str.count('-') > 2:
+                            dt = datetime.fromisoformat(dt_str)
+                        else:
+                            dt = datetime.fromisoformat(dt_str.replace('Z', ''))
+                        return dt.timestamp()
+                    # Try other common formats
+                    elif ' ' in date_value:
+                        dt = datetime.strptime(date_value.split('.')[0], '%Y-%m-%d %H:%M:%S')
+                        return dt.timestamp()
+                    else:
+                        return 0.0
+                except Exception as e:
+                    print(f"Warning: Could not parse date string '{date_value}': {e}")
+                    return 0.0
+            
+            # Unknown type, return 0
+            return 0.0
+        
+        def get_sort_key(log_item):
+            """Get sort key for a log item"""
+            log_date = log_item.get("log_date")
+            created_at = log_item.get("created_at")
+            
+            # Prefer log_date, fallback to created_at
+            date_to_use = log_date if log_date is not None else created_at
+            
+            return normalize_date_to_timestamp(date_to_use)
+        
+        # Sort logs by normalized timestamp
+        try:
+            logs.sort(key=get_sort_key, reverse=True)
+        except Exception as e:
+            print(f"Error sorting logs: {e}")
+            # If sorting fails, at least return the logs unsorted
+            import traceback
+            traceback.print_exc()
 
         return jsonify(
             {

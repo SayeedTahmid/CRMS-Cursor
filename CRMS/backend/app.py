@@ -129,6 +129,13 @@ try:
 except ImportError:
     print("⚠️  Reports module not available. Skipping registration.")
 
+# Register calls blueprint if it exists
+try:
+    from api.calls import calls_bp
+    app.register_blueprint(calls_bp, url_prefix='/api/calls')
+except ImportError:
+    print("⚠️  Calls module not available. Skipping registration.")
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

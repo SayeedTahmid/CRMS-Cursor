@@ -5,8 +5,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { customerService } from '../services/customers';
 import { Customer, Log } from '../types';
-import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, PhoneIcon } from '@heroicons/react/24/outline';
 import { canDeleteCustomer } from '../utils/permissions';
+import CallDialer from '../components/CallDialer';
+import JitsiCall from '../components/JitsiCall';
+import { generateRoomName } from '../services/calls';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +18,9 @@ const CustomerDetail: React.FC = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCallDialer, setShowCallDialer] = useState(false);
+  const [showJitsiCall, setShowJitsiCall] = useState(false);
+  const [jitsiRoomName, setJitsiRoomName] = useState<string>('');
 
   useEffect(() => {
     if (id && id !== "undefined" && id.trim() !== "") {
@@ -201,8 +207,32 @@ const CustomerDetail: React.FC = () => {
                   <p className="text-text-primary">📧 {customer.email}</p>
                 )}
                 {customer.phone && (
-                  <p className="text-text-primary">📱 {customer.phone}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-text-primary">📱 {customer.phone}</p>
+                    <button
+                      onClick={() => setShowCallDialer(true)}
+                      className="flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm transition-colors"
+                      title="Phone call (Twilio)"
+                    >
+                      <PhoneIcon className="w-4 h-4 mr-1" />
+                      Call
+                    </button>
+                  </div>
                 )}
+                <div className="mt-2">
+                  <button
+                    onClick={() => {
+                      const roomName = generateRoomName(customer?.id, customer?.name);
+                      setJitsiRoomName(roomName);
+                      setShowJitsiCall(true);
+                    }}
+                    className="flex items-center px-4 py-2 bg-primary-purple hover:bg-secondary-purple text-white rounded-md text-sm font-medium transition-colors"
+                    title="Start video/audio call (Jitsi - Free, no phone costs)"
+                  >
+                    <PhoneIcon className="w-5 h-5 mr-2" />
+                    Start Call
+                  </button>
+                </div>
                 {customer.website && (
                   <p className="text-text-primary">🌐 {customer.website}</p>
                 )}
@@ -282,6 +312,42 @@ const CustomerDetail: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Call Dialer Modal (Twilio Phone Calls) */}
+      {showCallDialer && (
+        <CallDialer
+          customerId={customer?.id}
+          customerPhone={customer?.phone}
+          customerName={customer?.name}
+          onCallEnd={(logId) => {
+            setShowCallDialer(false);
+            if (logId) {
+              // Reload logs to show the new call log
+              loadLogs();
+            }
+          }}
+          onClose={() => setShowCallDialer(false)}
+        />
+      )}
+
+      {/* Jitsi Video/Audio Call */}
+      {showJitsiCall && jitsiRoomName && (
+        <JitsiCall
+          roomName={jitsiRoomName}
+          customerId={customer?.id}
+          customerName={customer?.name}
+          onCallEnd={() => {
+            setShowJitsiCall(false);
+            setJitsiRoomName('');
+            // Reload logs to show the new call log
+            loadLogs();
+          }}
+          onClose={() => {
+            setShowJitsiCall(false);
+            setJitsiRoomName('');
+          }}
+        />
+      )}
     </div>
   );
 };

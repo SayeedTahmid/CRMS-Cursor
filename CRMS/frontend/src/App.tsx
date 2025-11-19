@@ -11,6 +11,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import CustomerForm from "./pages/CustomerForm";
 import LogForm from "./pages/LogForm";
 import LogsPage from "./pages/Logs";
+import CallHistory from "./pages/CallHistory";
 import Complaints from "./pages/Complaints";
 import ComplaintForm from "./pages/ComplaintForm";
 import ComplaintDetail from "./pages/ComplaintDetail";
@@ -135,6 +136,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <LogForm />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 📞 Call History */}
+          <Route
+            path="/calls"
+            element={
+              <ProtectedRoute>
+                <CallHistory />
               </ProtectedRoute>
             }
           />
