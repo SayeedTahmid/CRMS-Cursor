@@ -121,10 +121,16 @@ const Dashboard: React.FC = () => {
             color="warning"
           />
           <QuickActionCard
-            title="Create Log"
-            description="Record customer interactions and activities"
-            link="/logs/new"
+            title="View All Logs"
+            description="See all customer interactions and activities"
+            link="/logs"
             color="secondary-purple"
+          />
+          <QuickActionCard
+            title="Create Log"
+            description="Record a new customer interaction"
+            link="/logs/new"
+            color="success"
           />
         </div>
       </main>

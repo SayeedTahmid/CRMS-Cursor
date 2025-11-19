@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { listLogs, createLog, deleteLog, ListLogsParams, LogItem } from "../services/logs";
+import { listLogs, createLog, deleteLog, ListLogsParams } from "../services/logs";
+import { customerService } from "../services/customers";
+import { Log, Customer } from "../types";
 import { useAuth } from "../contexts/AuthContext";
+import { canUpdateLog, canDeleteLog } from "../utils/permissions";
 
 const LOG_TYPES = ["call", "email", "meeting", "note", "task"];
 
@@ -14,10 +17,7 @@ const canCreate = (role?: string) => {
   return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER","SALES_REP","SUPPORT"].includes(normalized);
 };
 
-const canDelete = (role?: string) => {
-  const normalized = normalizeRole(role);
-  return ["SUPER_ADMIN","TENANT_ADMIN","MANAGER"].includes(normalized);
-};
+// Use permission helpers from utils
 
 export default function LogsPage() {
   const { user, authenticated, loading } = useAuth();
@@ -29,9 +29,10 @@ export default function LogsPage() {
   const customerId = sp.get("customerId") || "";
   const limit = 20;
 
-  const [items, setItems] = useState<LogItem[]>([]);
+  const [items, setItems] = useState<Log[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  const [customerNames, setCustomerNames] = useState<Record<string, string>>({});
 
   const allowCreate = useMemo(() => canCreate(user?.role), [user?.role]);
 
@@ -56,7 +57,45 @@ export default function LogsPage() {
     if (search) (params as any).search = search;
 
     listLogs(params)
-      .then(res => { if (alive) setItems(res.logs || []); })
+      .then(async (res) => {
+        if (alive) {
+          setItems(res.logs || []);
+          // Load customer names for all unique customer IDs
+          // Filter out invalid IDs (names, empty strings, etc.)
+          const uniqueCustomerIds = [...new Set(
+            (res.logs || [])
+              .map(log => log.customer_id)
+              .filter(Boolean)
+              .filter(id => {
+                // Valid Firestore IDs are typically alphanumeric, 20-28 chars, no spaces or special chars
+                const isValidId = typeof id === 'string' && 
+                  id.length >= 10 && 
+                  id.length <= 30 &&
+                  !id.includes('(') && 
+                  !id.includes(')') &&
+                  !id.includes(' ') &&
+                  /^[a-zA-Z0-9]+$/.test(id);
+                return isValidId;
+              })
+          )];
+          if (uniqueCustomerIds.length > 0) {
+            const names: Record<string, string> = {};
+            await Promise.all(
+              uniqueCustomerIds.map(async (customerId) => {
+                try {
+                  const customer = await customerService.getById(customerId);
+                  names[customerId] = customer.name || customerId;
+                } catch (err) {
+                  // Silently fail - we'll just show the ID
+                  console.warn(`Could not load customer ${customerId}:`, err);
+                  names[customerId] = customerId; // Fallback to ID if customer not found
+                }
+              })
+            );
+            if (alive) setCustomerNames(names);
+          }
+        }
+      })
       .catch(e => { if (alive) { setError(e?.message || "Failed to load logs"); setItems([]); } })
       .finally(() => { if (alive) setBusy(false); });
 
@@ -126,9 +165,24 @@ export default function LogsPage() {
   return (
     <div className="min-h-screen bg-dark-bg">
       <header className="bg-dark-bg-secondary border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-text-primary">Logs</h1>
-          <div className="text-text-secondary text-sm">Signed in as {user?.email}</div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary">Logs</h1>
+              <p className="text-text-secondary text-sm">Manage customer interactions and activities</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-text-secondary">Welcome, {user?.displayName || user?.display_name || user?.email}</span>
+              {allowCreate && (
+                <Link
+                  to="/logs/new"
+                  className="px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors flex items-center gap-2"
+                >
+                  <span>+</span> New Log
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -232,70 +286,97 @@ export default function LogsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((log) => {
               const created = (typeof log.created_at === "string") ? new Date(log.created_at).toLocaleString() : "";
+              const logId = log.id || `log-${Math.random()}`;
+              const customerId = log.customer_id;
+              const hasValidCustomerId = customerId && customerId.length > 0 && !customerId.includes('(') && !customerId.includes(')');
+              const customerName = customerId && customerNames[customerId] ? customerNames[customerId] : (hasValidCustomerId ? customerId : customerId || 'Unknown');
+              
               return (
-                <div key={log.id} className="bg-dark-bg-card border border-border rounded p-4">
+                <div key={logId} className="bg-dark-bg-card border border-border rounded p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="flex-1">
                       <div className="text-text-primary font-semibold">
-                        {log.title || "(no title)"} <span className="text-text-secondary">[{log.type}]</span>
+                        {log.title || "(no title)"} <span className="text-text-secondary">[{log.type || 'note'}]</span>
                       </div>
-                      {log.description && <div className="text-text-secondary text-sm mt-1">{log.description}</div>}
-                      <div className="text-text-secondary text-xs mt-1">
-                        Customer:{" "}
-                        <Link to={`/customers/${log.customer_id}`} className="text-primary-purple">
-                          {log.customer_id}
-                        </Link>
-                      </div>
+                      {log.description && <div className="text-text-secondary text-sm mt-1 line-clamp-2">{log.description}</div>}
+                      {customerId && (
+                        <div className="text-text-secondary text-xs mt-1">
+                          Customer:{" "}
+                          {hasValidCustomerId ? (
+                            <Link to={`/customers/${customerId}`} className="text-primary-purple hover:text-secondary-purple">
+                              {customerName}
+                            </Link>
+                          ) : (
+                            <span className="text-text-secondary">{customerName}</span>
+                          )}
+                        </div>
+                      )}
                       {created && <div className="text-text-secondary text-xs mt-1">Created: {created}</div>}
                     </div>
-                    <div className="text-xs text-text-secondary">#{log.id.slice(0,6)}</div>
+                    {logId && <div className="text-xs text-text-secondary">#{logId.length > 6 ? logId.slice(0,6) : logId}</div>}
                   </div>
 
                   <div className="mt-3 flex items-center gap-2">
-                    <Link to={`/customers/${log.customer_id}`} className="text-xs text-primary-purple hover:text-secondary-purple">
-                      Open customer
-                    </Link>
-                    {canDelete(user?.role) && (
-                      <button
-                        className="ml-auto text-xs text-red-300 hover:text-red-200"
-                        onClick={async () => {
-                          if (!canDelete(user?.role)) {
-                            const userRole = user?.role || 'unknown';
-                            alert(`You do not have permission to delete logs.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
-                            return;
-                          }
-                          
-                          if (!confirm("Delete this log?")) return;
-                          try {
-                            await deleteLog(log.id);
-                            const next = new URLSearchParams(sp);
-                            next.set("page", "1");
-                            setSp(next, { replace: true });
-                          } catch (e: any) {
-                            console.error('Error deleting log:', e);
-                            
-                            // Build detailed error message
-                            const userRole = user?.role || 'unknown';
-                            const errorMessage = e?.message || e?.response?.data?.error || 'Failed to delete log';
-                            const status = e?.response?.status || 'unknown';
-                            
-                            const detailedMessage = `Failed to delete log\n\n` +
-                              `Error: ${errorMessage}\n` +
-                              `HTTP Status: ${status}\n` +
-                              `Your Role: ${userRole}\n` +
-                              `Permission Check: ${canDelete(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
-                              `If you believe this is an error, please check:\n` +
-                              `1. Your role is correctly set in the system\n` +
-                              `2. You are logged in with the correct account\n` +
-                              `3. The log belongs to your tenant`;
-                            
-                            alert(detailedMessage);
-                          }
-                        }}
-                      >
-                        Delete
-                      </button>
+                    {hasValidCustomerId && (
+                      <Link to={`/customers/${customerId}`} className="text-xs text-primary-purple hover:text-secondary-purple">
+                        Open customer
+                      </Link>
                     )}
+                    <div className="ml-auto flex items-center gap-2">
+                      {canUpdateLog(user?.role) && logId && (
+                        <Link
+                          to={`/logs/edit/${logId}`}
+                          className="text-xs text-primary-purple hover:text-secondary-purple"
+                        >
+                          Edit
+                        </Link>
+                      )}
+                      {canDeleteLog(user?.role) && logId && (
+                        <button
+                          className="text-xs text-red-300 hover:text-red-200"
+                          onClick={async () => {
+                            if (!canDeleteLog(user?.role)) {
+                              const userRole = user?.role || 'unknown';
+                              alert(`You do not have permission to delete logs.\n\nYour role: ${userRole}\nRequired roles: SUPER_ADMIN, TENANT_ADMIN, or MANAGER`);
+                              return;
+                            }
+                            
+                            if (!confirm("Delete this log?")) return;
+                            try {
+                              if (!logId || logId.startsWith('log-')) {
+                                alert("Cannot delete: Invalid log ID");
+                                return;
+                              }
+                              await deleteLog(logId);
+                              const next = new URLSearchParams(sp);
+                              next.set("page", "1");
+                              setSp(next, { replace: true });
+                            } catch (e: any) {
+                              console.error('Error deleting log:', e);
+                              
+                              // Build detailed error message
+                              const userRole = user?.role || 'unknown';
+                              const errorMessage = e?.message || e?.response?.data?.error || 'Failed to delete log';
+                              const status = e?.response?.status || 'unknown';
+                              
+                              const detailedMessage = `Failed to delete log\n\n` +
+                                `Error: ${errorMessage}\n` +
+                                `HTTP Status: ${status}\n` +
+                                `Your Role: ${userRole}\n` +
+                                `Permission Check: ${canDeleteLog(user?.role) ? 'PASSED' : 'FAILED'}\n\n` +
+                                `If you believe this is an error, please check:\n` +
+                                `1. Your role is correctly set in the system\n` +
+                                `2. You are logged in with the correct account\n` +
+                                `3. The log belongs to your tenant`;
+                              
+                              alert(detailedMessage);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -41,6 +41,12 @@ const Navigation: React.FC = () => {
               Complaints
             </Link>
             <Link
+              to="/logs"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              Logs
+            </Link>
+            <Link
               to="/reports"
               className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
             >

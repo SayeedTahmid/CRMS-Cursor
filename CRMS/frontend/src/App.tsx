@@ -10,6 +10,7 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import CustomerForm from "./pages/CustomerForm";
 import LogForm from "./pages/LogForm";
+import LogsPage from "./pages/Logs";
 import Complaints from "./pages/Complaints";
 import ComplaintForm from "./pages/ComplaintForm";
 import ComplaintDetail from "./pages/ComplaintDetail";
@@ -106,6 +107,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <CustomerDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 📝 Logs List */}
+          <Route
+            path="/logs"
+            element={
+              <ProtectedRoute>
+                <LogsPage />
               </ProtectedRoute>
             }
           />

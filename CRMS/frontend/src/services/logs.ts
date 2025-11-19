@@ -98,6 +98,13 @@ export async function listLogs(params: ListLogsParams = {}): Promise<{ logs: Log
 }
 
 /**
+ * Create a log (wrapper for convenience)
+ */
+export async function createLog(log: Partial<Log>): Promise<Log> {
+  return logService.create(log);
+}
+
+/**
  * Delete a log (wrapper for convenience)
  */
 export async function deleteLog(id: string): Promise<void> {

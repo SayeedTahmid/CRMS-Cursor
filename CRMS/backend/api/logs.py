@@ -54,7 +54,9 @@ def list_logs():
             for doc in query.stream():
                 try:
                     log = Log.from_dict(doc.id, doc.to_dict())
-                    logs.append(log.to_dict())
+                    log_dict = log.to_dict()
+                    log_dict['id'] = doc.id  # Ensure ID is always included
+                    logs.append(log_dict)
                 except Exception as e:
                     # Skip malformed documents but log them for debugging
                     print(f"Error processing log {doc.id}: {e}")
@@ -95,7 +97,9 @@ def get_log(log_id):
             return jsonify({"error": "Log not found"}), 404
 
         log = Log.from_dict(doc.id, doc.to_dict())
-        return jsonify(log.to_dict()), 200
+        log_dict = log.to_dict()
+        log_dict['id'] = doc.id  # Ensure ID is always included
+        return jsonify(log_dict), 200
 
     except Exception as e:
         print(f"Error in get_log: {e}")
@@ -177,35 +181,48 @@ def create_log():
 
 @logs_bp.route("/<log_id>", methods=["PUT"])
 @require_auth
+@require_permission("logs", "update")
 def update_log(log_id):
     """Update an existing log"""
     try:
         db = get_db()
+        uid = request.user["uid"]
+        tenant_id = request.user.get("tenant_id", "default")
+        
         log_ref = db.collection("logs").document(log_id)
 
         doc = log_ref.get()
         if not doc.exists:
             return jsonify({"error": "Log not found"}), 404
 
+        # Check tenant isolation (security)
+        doc_data = doc.to_dict() or {}
+        doc_tenant_id = doc_data.get("tenant_id", "default")
+        if doc_tenant_id != tenant_id:
+            return jsonify({"error": "Log not found"}), 404
+
         # Update log data
         data = request.json or {}
-        log = Log.from_dict(log_id, doc.to_dict())
+        log = Log.from_dict(log_id, doc_data)
 
         # Update fields (except immutable ones)
         for key, value in data.items():
-            if hasattr(log, key) and key not in ["id", "created_at", "created_by"]:
+            if hasattr(log, key) and key not in ["id", "created_at", "created_by", "tenant_id"]:
                 setattr(log, key, value)
 
         log.update_timestamp()
 
         # Save to Firestore
-        log_ref.set(log.to_dict())
+        log_dict = log.to_dict()
+        # Ensure tenant_id is preserved
+        log_dict["tenant_id"] = tenant_id
+        log_ref.set(log_dict)
 
         return (
             jsonify(
                 {
                     "message": "Log updated successfully",
-                    "log": log.to_dict(),
+                    "log": log_dict,
                 }
             ),
             200,
@@ -213,6 +230,8 @@ def update_log(log_id):
 
     except Exception as e:
         print(f"Error in update_log: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 

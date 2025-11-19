@@ -81,6 +81,14 @@ export const canCreateLog = (role?: string): boolean => {
 };
 
 /**
+ * Check if user can update logs
+ */
+export const canUpdateLog = (role?: string): boolean => {
+  const normalized = normalizeRole(role);
+  return ["SUPER_ADMIN", "TENANT_ADMIN", "MANAGER", "SALES_REP", "SUPPORT"].includes(normalized);
+};
+
+/**
  * Check if user can delete logs
  */
 export const canDeleteLog = (role?: string): boolean => {
