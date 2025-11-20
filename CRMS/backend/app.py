@@ -136,6 +136,13 @@ try:
 except ImportError:
     print("⚠️  Calls module not available. Skipping registration.")
 
+# Register taiga blueprint if it exists
+try:
+    from api.taiga import taiga_bp
+    app.register_blueprint(taiga_bp, url_prefix='/api/taiga')
+except ImportError:
+    print("⚠️  Taiga module not available. Skipping registration.")
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

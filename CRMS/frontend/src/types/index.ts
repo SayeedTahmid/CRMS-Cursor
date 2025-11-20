@@ -96,6 +96,12 @@ export interface Complaint {
   updated_at?: string;
   created_by?: string;
   tenant_id?: string;
+  // Taiga integration
+  taiga_issue_id?: number;
+  taiga_issue_url?: string;
+  taiga_status?: string;
+  taiga_project_slug?: string;
+  taiga_issue_ref?: number;
 }
 
 

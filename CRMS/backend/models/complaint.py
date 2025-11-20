@@ -73,6 +73,13 @@ class Complaint(BaseModel):
         self.tags = kwargs.get('tags', [])
         self.category = kwargs.get('category')
         self.subcategory = kwargs.get('subcategory')
+        
+        # Taiga integration
+        self.taiga_issue_id = kwargs.get('taiga_issue_id')
+        self.taiga_issue_url = kwargs.get('taiga_issue_url')
+        self.taiga_status = kwargs.get('taiga_status')  # Status from Taiga
+        self.taiga_project_slug = kwargs.get('taiga_project_slug')
+        self.taiga_issue_ref = kwargs.get('taiga_issue_ref')  # Taiga issue reference number
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert complaint to dictionary for Firestore"""
@@ -101,6 +108,11 @@ class Complaint(BaseModel):
             'tags': self.tags,
             'category': self.category,
             'subcategory': self.subcategory,
+            'taiga_issue_id': self.taiga_issue_id,
+            'taiga_issue_url': self.taiga_issue_url,
+            'taiga_status': self.taiga_status,
+            'taiga_project_slug': self.taiga_project_slug,
+            'taiga_issue_ref': self.taiga_issue_ref,
         })
         
         return data

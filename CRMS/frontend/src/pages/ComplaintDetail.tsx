@@ -5,8 +5,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { complaintService } from '../services/complaints';
 import { customerService } from '../services/customers';
+import { createTaigaIssue, syncTaigaStatus, linkTaigaIssue } from '../services/taiga';
 import { Complaint, Customer } from '../types';
-import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilIcon, TrashIcon, LinkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { canDeleteComplaint } from '../utils/permissions';
 
 const ComplaintDetail: React.FC = () => {
@@ -17,6 +18,7 @@ const ComplaintDetail: React.FC = () => {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [taigaLoading, setTaigaLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -57,6 +59,79 @@ const ComplaintDetail: React.FC = () => {
       alert('Failed to update status');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleCreateTaigaIssue = async () => {
+    if (!id) return;
+    
+    if (!confirm('Create a new Taiga issue from this complaint?')) {
+      return;
+    }
+    
+    try {
+      setTaigaLoading(true);
+      const response = await createTaigaIssue({ complaint_id: id });
+      
+      alert(`Taiga issue created successfully!\n\nIssue #${response.taiga_issue.ref}: ${response.taiga_issue.subject}\nStatus: ${response.taiga_issue.status}`);
+      
+      // Reload complaint to get updated Taiga info
+      await loadComplaint();
+    } catch (error: any) {
+      console.error('Error creating Taiga issue:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to create Taiga issue';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setTaigaLoading(false);
+    }
+  };
+
+  const handleSyncTaigaStatus = async () => {
+    if (!id) return;
+    
+    try {
+      setTaigaLoading(true);
+      const response = await syncTaigaStatus({ complaint_id: id });
+      
+      alert(`Status synced from Taiga!\n\nTaiga Status: ${response.taiga_status}\nCRM Status: ${response.crm_status}`);
+      
+      // Reload complaint to get updated status
+      await loadComplaint();
+    } catch (error: any) {
+      console.error('Error syncing Taiga status:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to sync Taiga status';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setTaigaLoading(false);
+    }
+  };
+
+  const handleLinkTaigaIssue = async () => {
+    if (!id) return;
+    
+    const issueId = prompt('Enter Taiga Issue ID to link:');
+    if (!issueId || isNaN(Number(issueId))) {
+      alert('Invalid issue ID');
+      return;
+    }
+    
+    try {
+      setTaigaLoading(true);
+      const response = await linkTaigaIssue({
+        complaint_id: id,
+        taiga_issue_id: Number(issueId),
+      });
+      
+      alert(`Taiga issue linked successfully!\n\nIssue #${response.taiga_issue.ref}: ${response.taiga_issue.subject}`);
+      
+      // Reload complaint to get updated Taiga info
+      await loadComplaint();
+    } catch (error: any) {
+      console.error('Error linking Taiga issue:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to link Taiga issue';
+      alert(`Error: ${errorMsg}`);
+    } finally {
+      setTaigaLoading(false);
     }
   };
 
@@ -329,6 +404,59 @@ const ComplaintDetail: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Taiga Integration Card */}
+            <div className="bg-dark-bg-card rounded-lg p-6 border border-border">
+              <h3 className="text-lg font-semibold text-text-primary mb-4">Taiga Integration</h3>
+              {complaint.taiga_issue_id ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-primary-purple/10 border border-primary-purple/30 rounded">
+                    <div className="text-sm text-text-secondary mb-1">Linked Issue</div>
+                    <div className="font-semibold text-text-primary">
+                      #{complaint.taiga_issue_ref}: {complaint.taiga_status || 'Unknown Status'}
+                    </div>
+                    {complaint.taiga_issue_url && (
+                      <a
+                        href={complaint.taiga_issue_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-purple hover:text-secondary-purple text-sm flex items-center gap-1 mt-2"
+                      >
+                        <LinkIcon className="w-4 h-4" />
+                        Open in Taiga
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSyncTaigaStatus}
+                    disabled={taigaLoading}
+                    className="w-full flex items-center justify-center px-4 py-2 bg-primary-purple text-white rounded-md hover:bg-secondary-purple transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ArrowPathIcon className={`w-5 h-5 mr-2 ${taigaLoading ? 'animate-spin' : ''}`} />
+                    {taigaLoading ? 'Syncing...' : 'Sync Status from Taiga'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    onClick={handleCreateTaigaIssue}
+                    disabled={taigaLoading}
+                    className="w-full flex items-center justify-center px-4 py-2 bg-primary-purple text-white rounded-md hover:bg-secondary-purple transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <LinkIcon className="w-5 h-5 mr-2" />
+                    {taigaLoading ? 'Creating...' : 'Create Taiga Issue'}
+                  </button>
+                  <button
+                    onClick={handleLinkTaigaIssue}
+                    disabled={taigaLoading}
+                    className="w-full flex items-center justify-center px-4 py-2 border border-border text-text-primary rounded-md hover:bg-dark-bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <LinkIcon className="w-5 h-5 mr-2" />
+                    Link Existing Issue
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Actions Card */}

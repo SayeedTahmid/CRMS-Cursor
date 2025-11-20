@@ -242,12 +242,15 @@ def create_complaint():
             "updated_at": firestore.SERVER_TIMESTAMP,
         }
         doc_ref.set(payload)
-        payload["id"] = doc_ref.id
-        payload["ticket_number"] = ticket_number
+        
+        # Re-fetch the document to get actual timestamp values (not Sentinel objects)
+        saved_snap = doc_ref.get()
+        saved_data = saved_snap.to_dict() or {}
+        
         return jsonify({
             "success": True,
             "data": {"id": doc_ref.id, "ticketNumber": ticket_number, "message": "Complaint created successfully"},
-            "complaint": payload
+            "complaint": {"id": doc_ref.id, **saved_data}
         }), 201
     except Exception as e:
         print(f"Error in create_complaint: {e}")
