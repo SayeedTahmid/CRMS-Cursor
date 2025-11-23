@@ -143,6 +143,13 @@ try:
 except ImportError:
     print("⚠️  Taiga module not available. Skipping registration.")
 
+# Register telegram blueprint if it exists
+try:
+    from api.telegram import telegram_bp
+    app.register_blueprint(telegram_bp, url_prefix='/api/telegram')
+except ImportError:
+    print("⚠️  Telegram module not available. Skipping registration.")
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

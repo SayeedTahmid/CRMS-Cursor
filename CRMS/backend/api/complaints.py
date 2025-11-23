@@ -247,6 +247,23 @@ def create_complaint():
         saved_snap = doc_ref.get()
         saved_data = saved_snap.to_dict() or {}
         
+        # Send Telegram notification (non-blocking)
+        try:
+            from utils.telegram_notifications import notify_complaint_created
+            notify_complaint_created(
+                tenant_id=tenant_id,
+                complaint_id=doc_ref.id,
+                ticket_number=ticket_number,
+                title=title,
+                customer_id=customer_id,
+                priority=severity
+            )
+        except Exception as notify_error:
+            print(f"[Complaint Creation] Warning: Failed to send Telegram notification: {notify_error}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the request if notification fails
+        
         return jsonify({
             "success": True,
             "data": {"id": doc_ref.id, "ticketNumber": ticket_number, "message": "Complaint created successfully"},
@@ -298,6 +315,23 @@ def update_status(complaint_id):
     # Get updated complaint
     updated_snap = ref.get()
     updated_data = updated_snap.to_dict() or {}
+    
+    # Send Telegram notification for status change (non-blocking)
+    try:
+        from utils.telegram_notifications import notify_complaint_status_changed
+        old_status = existing.get("status", "unknown")
+        notify_complaint_status_changed(
+            tenant_id=tenant_id,
+            complaint_id=complaint_id,
+            old_status=old_status,
+            new_status=status,
+            ticket_number=existing.get("ticket_number"),
+            title=existing.get("title")
+        )
+    except Exception as notify_error:
+        print(f"Warning: Failed to send Telegram notification: {notify_error}")
+        # Don't fail the request if notification fails
+    
     return jsonify({
         "status": status,
         "message": "Status updated",
@@ -372,6 +406,48 @@ def update_complaint(complaint_id):
         # Get updated complaint
         updated_snap = ref.get()
         updated_data = updated_snap.to_dict() or {}
+        
+        # Send Telegram notification if status changed (non-blocking)
+        if "status" in update_fields:
+            try:
+                from utils.telegram_notifications import notify_complaint_status_changed
+                old_status = existing.get("status", "unknown")
+                new_status = update_fields["status"]
+                if old_status != new_status:
+                    notify_complaint_status_changed(
+                        tenant_id=tenant_id,
+                        complaint_id=complaint_id,
+                        old_status=old_status,
+                        new_status=new_status,
+                        ticket_number=existing.get("ticket_number"),
+                        title=existing.get("title") or updated_data.get("title")
+                    )
+            except Exception as notify_error:
+                print(f"[Complaint Update] Warning: Failed to send Telegram notification: {notify_error}")
+            import traceback
+            traceback.print_exc()
+        else:
+            # Send generic update notification if other fields changed
+            try:
+                from utils.telegram_notifications import notify_complaint_updated
+                changes = {}
+                for field in update_fields:
+                    if field != "updated_at":
+                        changes[field] = {"old": existing.get(field), "new": update_fields[field]}
+                
+                if changes:
+                    notify_complaint_updated(
+                        tenant_id=tenant_id,
+                        complaint_id=complaint_id,
+                        ticket_number=existing.get("ticket_number"),
+                        title=existing.get("title") or updated_data.get("title"),
+                        changes=changes
+                    )
+            except Exception as notify_error:
+                print(f"[Complaint Update] Warning: Failed to send Telegram notification: {notify_error}")
+            import traceback
+            traceback.print_exc()
+        
         return jsonify({
             "message": "Complaint updated successfully",
             "complaint": {"id": complaint_id, **updated_data}

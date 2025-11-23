@@ -49,7 +49,7 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-text-primary">Modern CRM</h1>
+              <h1 className="text-2xl font-bold text-text-primary">NextGen CRM</h1>
             </div>
             <div className="flex-1 max-w-lg">
               <SearchBar />

@@ -310,6 +310,22 @@ def create_customer():
         
         print(f"✅ Customer response dict - ID present: {'id' in customer_dict}, ID value: {customer_dict.get('id')}, Keys: {list(customer_dict.keys())[:10]}")
         
+        # Send Telegram notification (non-blocking)
+        try:
+            from utils.telegram_notifications import notify_customer_created
+            notify_customer_created(
+                tenant_id=tenant_id,
+                customer_id=customer_id,
+                customer_name=customer.name,
+                email=customer.email,
+                phone=customer.phone
+            )
+        except Exception as notify_error:
+            print(f"[Customer Update] Warning: Failed to send Telegram notification: {notify_error}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the request if notification fails
+        
         return jsonify({
             'message': 'Customer created successfully',
             'customer': customer_dict
@@ -376,6 +392,23 @@ def update_customer(customer_id):
             'id': str(customer_id),  # ID FIRST - ensures it's always present
             **customer_dict_base  # Then all other fields
         }
+        
+        # Send Telegram notification (non-blocking)
+        try:
+            from utils.telegram_notifications import notify_customer_updated
+            # Determine what changed
+            changed_fields = [key for key in data.keys() if key not in ['id', 'created_at', 'created_by', 'tenant_id']]
+            notify_customer_updated(
+                tenant_id=tenant_id,
+                customer_id=customer_id,
+                customer_name=customer.name,
+                changes=changed_fields if changed_fields else None
+            )
+        except Exception as notify_error:
+            print(f"[Customer Update] Warning: Failed to send Telegram notification: {notify_error}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the request if notification fails
         
         return jsonify({
             'message': 'Customer updated successfully',
