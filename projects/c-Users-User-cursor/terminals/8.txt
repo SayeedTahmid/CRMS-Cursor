@@ -1,0 +1,29 @@
+---
+pid: 32128
+cwd: |
+  C:\Users\User\.cursor\CRMS\backend\scripts
+last_command: python get_taiga_token.py
+last_exit_code: 0
+---
+PS C:\Users\User\.cursor> cd CRMS
+PS C:\Users\User\.cursor\CRMS> cd backend
+PS C:\Users\User\.cursor\CRMS\backend> cd scripts
+PS C:\Users\User\.cursor\CRMS\backend\scripts> python get_taiga_token.py
+Auth token:
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0NzAzODM2LCJqdGkiOiI4NDgzNzUzN2JmODE0NTA5ODE3MDY5ZjUxYTI0MWNmNCI.QkzaMIrzCK0ExXWki-PjhBS4txJfcpd8nMJlhuiNXVPC9h4tNclAr4TufP6Cc3FmRg0TSrF_FKtrhfsw33sj9lqWoy_7JfaOllx86_bmCU7kLBBRWZtQy2jCMWrzW4-nKax6v70zBnwCJeRmSpU5E8cBR24UBgCeaxTa6Ar.QkzaMIrzCK0ExXWki-PjhBS4txJfcpd8nMJlhuiNXVPC9h4tNclAr4TufP6Cc3FmRg0TSrF_FKtrhfsw33sj9lqWoy_7JfaOllx86_bmCU7kLBBRWZtQy2jCMWrzW4-nKax6v70zBnwCJeRmSpU5E8cBR24UBgCeaxTa6ArakqBrgHHBw0MuCFLrHbzPVyxHArDlhXdQpTSqRKdYKumIMEvqCT4pmcU6QQex4xo5p54QklmFkLkIa86jTXGu51svbDzYwaMH1-T7Ucz2PiUGSbcwITgY3aQDAsx7itW41ClXKttexROp9cArwMXddw2vZ9OL-Q-fyTSqz_kRwUQi9A
+PS C:\Users\User\.cursor\CRMS\backend\scripts>      
+
+
+
+
+
+
+
+
+                                               python get_taiga_token.py
+Auth token:
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0NzEwNzQ3LCJqdGkiOiI0NjI1OTY5NmY3YjI0NmVjOTIwMjQ4M2QzMzI2ZTFmZiIsInVzZXJfaWQiOjg4NjUwN30.gEHdAIheRE33uxg5aLsJ95CEhXIxbZwQGEq_p2lXsazeT-qSYaTTOJFq7gGSCSQLXzRPTvDA7nlsB_ZiYtW9udQl-XZbEgoq7UZzxvSlRZeyUCDdK9crJhbim7GIgwA1qxUPhoHRpUSP_DJHK5fFIImI2FCUNmd0APnyjj6LZ7tcNjE7GM0d7CWUqSBOjQLOMDnFO7BLHsyc7FX3_oORm6DazQudeCitWNkGk_BRJPPP0xFAweWkHF3s8CrK2RZpisi9I4zHRVZ0K0UNkn_bRIafgDq-d1fYbiwT6IfNdoxBwJMKYWfU55SBnS3wyha9CRTNgIHwU5VhM3PNVHW6jg
+PS C:\Users\User\.cursor\CRMS\backend\scripts> python get_taiga_token.py
+Auth token:
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY0NzEwODIzLCJqdGkiOiI5N2NlMWEwYzc3NTQ0OWUzYTcwMzQ3NzU4MzUyMTAwNSIsInVzZXJfaWQiOjg4NjUwN30.YqkR5CvDfhINLHYqvBkHYM61ZzMyQECmMxm0YZ8arG0xC8N1BTZmDe9tBES6sj75JzaDc6Y2pw70AKBtw7t44hE4qJ2AJXqmhYDviu2aZjzWm6aZ9CovftL-KRiKAnkuEybOyn-vVGssjXMBDVRG_agoKqrvhXRL6N52j1h0ek8taiHH4UgPuiKSI7Pt0lFIoItwHEAGoO9BU7sviZUrqKXl7MrIaAp9lyn9HOyeia47TumoSZP-lRj85YJvGo5uHECaQPikmzDJ6kssPXeunjoPHArG6GT8XIrVazx9Y7LxA6VKLqqVdmaic-uPuGEMUHgjZWS4MWDTS-X_K8m5_g
+PS C:\Users\User\.cursor\CRMS\backend\scripts>

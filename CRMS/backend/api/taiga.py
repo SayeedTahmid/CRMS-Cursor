@@ -16,6 +16,35 @@ def _bad(value):
     return not value or value == 'undefined' or (isinstance(value, str) and value.strip() == '')
 
 
+@taiga_bp.route('/status', methods=['GET'])
+@require_auth
+def get_taiga_status():
+    """
+    Simple Taiga configuration status endpoint.
+    Returns whether TAIGA_AUTH_TOKEN (and optionally TAIGA_PROJECT_SLUG) are set.
+    """
+    try:
+        auth_token = os.getenv('TAIGA_AUTH_TOKEN')
+        project_slug = os.getenv('TAIGA_PROJECT_SLUG')
+
+        if not auth_token:
+            return jsonify({
+                "configured": False,
+                "message": "Taiga not configured. Please set TAIGA_AUTH_TOKEN (and TAIGA_PROJECT_SLUG) environment variables."
+            }), 200
+
+        return jsonify({
+            "configured": True,
+            "project_slug": project_slug,
+            "message": "Taiga auth token is configured."
+        }), 200
+    except Exception as e:
+        print(f"Error getting Taiga status: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @taiga_bp.route('/create-issue', methods=['POST'])
 @require_auth
 @require_permission("complaints", "update")
@@ -266,6 +295,67 @@ def sync_taiga_status():
         
     except Exception as e:
         print(f"Error syncing Taiga status: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@taiga_bp.route('/unlink-issue', methods=['POST'])
+@require_auth
+@require_permission("complaints", "update")
+def unlink_taiga_issue():
+    """
+    Unlink a Taiga issue from a complaint
+    
+    Request body:
+    {
+        "complaint_id": "complaint123"
+    }
+    """
+    try:
+        body = request.get_json(force=True) or {}
+        complaint_id = body.get('complaint_id')
+        
+        if _bad(complaint_id):
+            return jsonify({"error": "complaint_id is required"}), 400
+        
+        uid = request.user['uid']
+        tenant_id = request.user.get('tenant_id', 'default')
+        
+        db = get_db()
+        
+        # Get complaint
+        complaint_ref = db.collection('complaints').document(complaint_id)
+        complaint_doc = complaint_ref.get()
+        
+        if not complaint_doc.exists:
+            return jsonify({"error": "Complaint not found"}), 404
+        
+        complaint_data = complaint_doc.to_dict()
+        
+        # Check tenant isolation
+        if complaint_data.get('tenant_id') != tenant_id:
+            return jsonify({"error": "Complaint not found"}), 404
+        
+        # Clear Taiga fields
+        update_data = {
+            'taiga_issue_id': None,
+            'taiga_issue_ref': None,
+            'taiga_issue_url': None,
+            'taiga_status': None,
+            'taiga_project_slug': None,
+            'updated_at': firestore.SERVER_TIMESTAMP,
+        }
+        
+        complaint_ref.update(update_data)
+        
+        return jsonify({
+            "success": True,
+            "message": "Taiga issue unlinked from complaint"
+        }), 200
+        
+    except Exception as e:
+        print(f"Error unlinking Taiga issue: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500

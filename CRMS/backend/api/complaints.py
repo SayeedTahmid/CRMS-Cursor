@@ -2,9 +2,14 @@
 from flask import Blueprint, request, jsonify, current_app
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
-from api.auth import require_auth, require_permission,require_role
+from api.auth import require_auth, require_permission, require_role
 from utils.firebase import get_db
 from utils.rbac import SALES_REP, normalize_role
+from utils.email_notifications import (
+    notify_complaint_created_email,
+    notify_complaint_status_email,
+    notify_complaint_updated_email,
+)
 
 complaints_bp = Blueprint("complaints", __name__)
 
@@ -263,6 +268,18 @@ def create_complaint():
             import traceback
             traceback.print_exc()
             # Don't fail the request if notification fails
+
+        # Send Email notification (non-blocking)
+        try:
+            notify_complaint_created_email(
+                tenant_id=tenant_id,
+                complaint={"id": doc_ref.id, **saved_data},
+                customer_id=customer_id,
+            )
+        except Exception as email_error:
+            print(f"[Complaint Creation] Warning: Failed to send email notification: {email_error}")
+            import traceback
+            traceback.print_exc()
         
         return jsonify({
             "success": True,
@@ -331,6 +348,20 @@ def update_status(complaint_id):
     except Exception as notify_error:
         print(f"Warning: Failed to send Telegram notification: {notify_error}")
         # Don't fail the request if notification fails
+
+    # Send email notification for status change
+    try:
+        notify_complaint_status_email(
+            tenant_id=tenant_id,
+            complaint={"id": complaint_id, **updated_data},
+            customer_id=existing.get("customer_id"),
+            old_status=existing.get("status", "unknown"),
+            new_status=status,
+        )
+    except Exception as email_error:
+        print(f"[Complaint Status] Warning: Failed to send email notification: {email_error}")
+        import traceback
+        traceback.print_exc()
     
     return jsonify({
         "status": status,
@@ -426,6 +457,24 @@ def update_complaint(complaint_id):
                 print(f"[Complaint Update] Warning: Failed to send Telegram notification: {notify_error}")
             import traceback
             traceback.print_exc()
+
+            # Email notification for status change
+            try:
+                old_status = existing.get("status", "unknown")
+                new_status = update_fields["status"]
+                if old_status != new_status:
+                    notify_complaint_status_email(
+                        tenant_id=tenant_id,
+                        complaint={"id": complaint_id, **updated_data},
+                        customer_id=existing.get("customer_id"),
+                        old_status=old_status,
+                        new_status=new_status,
+                    )
+            except Exception as email_error:
+                print(f"[Complaint Update] Warning: Failed to send email notification: {email_error}")
+                import traceback
+
+                traceback.print_exc()
         else:
             # Send generic update notification if other fields changed
             try:
@@ -445,6 +494,17 @@ def update_complaint(complaint_id):
                     )
             except Exception as notify_error:
                 print(f"[Complaint Update] Warning: Failed to send Telegram notification: {notify_error}")
+            try:
+                notify_complaint_updated_email(
+                    tenant_id=tenant_id,
+                    complaint={"id": complaint_id, **updated_data},
+                    customer_id=existing.get("customer_id"),
+                )
+            except Exception as email_error:
+                print(f"[Complaint Update] Warning: Failed to send email notification: {email_error}")
+                import traceback
+
+                traceback.print_exc()
             import traceback
             traceback.print_exc()
         

@@ -63,6 +63,14 @@ PERMISSIONS: Dict[str, Dict[str, List[str]]] = {
         SALES_REP: ["read"],
         SUPPORT: ["read"],
         VIEWER: ["read"],
+    },
+    "email": {
+        SUPER_ADMIN: ["create", "read"],
+        TENANT_ADMIN: ["create", "read"],
+        MANAGER: ["create", "read"],
+        SALES_REP: ["create", "read"],
+        SUPPORT: ["create", "read"],
+        VIEWER: ["read"],
     }
 }
 

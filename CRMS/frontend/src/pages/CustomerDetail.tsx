@@ -10,6 +10,7 @@ import { canDeleteCustomer } from '../utils/permissions';
 import CallDialer from '../components/CallDialer';
 import JitsiCall from '../components/JitsiCall';
 import { generateRoomName } from '../services/calls';
+import { getEmailHistory, EmailHistoryEntry } from '../services/email';
 
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,8 @@ const CustomerDetail: React.FC = () => {
   const [showCallDialer, setShowCallDialer] = useState(false);
   const [showJitsiCall, setShowJitsiCall] = useState(false);
   const [jitsiRoomName, setJitsiRoomName] = useState<string>('');
+  const [emailHistory, setEmailHistory] = useState<EmailHistoryEntry[]>([]);
+  const [emailHistoryLoading, setEmailHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (id && id !== "undefined" && id.trim() !== "") {
@@ -42,6 +45,7 @@ const CustomerDetail: React.FC = () => {
       const data = await customerService.getById(id);
       console.log("CustomerDetail: Customer loaded successfully:", data);
       setCustomer(data);
+      await loadEmailHistory(id);
     } catch (error: any) {
       console.error('CustomerDetail: Error loading customer:', error);
       console.error('CustomerDetail: Error details:', {
@@ -62,6 +66,18 @@ const CustomerDetail: React.FC = () => {
       setLogs(Array.isArray(logsData) ? logsData : (logsData.logs || []));
     } catch (error) {
       console.error('Error loading logs:', error);
+    }
+  };
+
+  const loadEmailHistory = async (customerId: string) => {
+    try {
+      setEmailHistoryLoading(true);
+      const response = await getEmailHistory({ customerId, limit: 50 });
+      setEmailHistory(response.history || []);
+    } catch (error) {
+      console.error('Error loading email history:', error);
+    } finally {
+      setEmailHistoryLoading(false);
     }
   };
 
@@ -246,6 +262,44 @@ const CustomerDetail: React.FC = () => {
                   <p>{customer.city}{customer.city && customer.state ? ', ' : ''}{customer.state}</p>
                 )}
                 {customer.country && <p>{customer.country}</p>}
+              </div>
+
+              {/* Email History */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-text-secondary">Email History</h4>
+                  <button
+                    onClick={() => id && loadEmailHistory(id)}
+                    className="text-xs text-primary-purple hover:text-secondary-purple"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {emailHistoryLoading ? (
+                  <p className="text-text-secondary text-sm">Loading history...</p>
+                ) : emailHistory.length === 0 ? (
+                  <p className="text-text-secondary text-sm">No emails yet.</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {emailHistory.map((entry) => (
+                      <div key={entry.id} className="border border-border rounded-lg p-3 bg-dark-bg-secondary">
+                        <div className="flex justify-between text-xs text-text-secondary mb-1">
+                          <span>{entry.sent_at ? new Date(entry.sent_at).toLocaleString() : 'Pending'}</span>
+                          <span className={entry.status === 'sent' ? 'text-green-400' : 'text-red-400'}>
+                            {entry.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-text-primary truncate">{entry.subject}</p>
+                        {(entry.trigger || entry.complaint_id) && (
+                          <p className="text-[11px] text-text-secondary mt-1">
+                            {entry.trigger ? `Trigger: ${entry.trigger}` : ''}{' '}
+                            {entry.complaint_id ? `Complaint: ${entry.complaint_id}` : ''}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

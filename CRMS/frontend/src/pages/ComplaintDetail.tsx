@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { complaintService } from '../services/complaints';
 import { customerService } from '../services/customers';
 import { createTaigaIssue, syncTaigaStatus, linkTaigaIssue } from '../services/taiga';
+import { sendEmail, SendEmailRequest, getEmailHistory, EmailHistoryEntry } from '../services/email';
 import { Complaint, Customer } from '../types';
 import { ArrowLeftIcon, PencilIcon, TrashIcon, LinkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { canDeleteComplaint } from '../utils/permissions';
@@ -19,6 +20,13 @@ const ComplaintDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [taigaLoading, setTaigaLoading] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [emailHistory, setEmailHistory] = useState<EmailHistoryEntry[]>([]);
+  const [emailHistoryLoading, setEmailHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -40,10 +48,70 @@ const ComplaintDetail: React.FC = () => {
           console.error('Error loading customer:', err);
         }
       }
+      await loadEmailHistory(id!);
     } catch (error) {
       console.error('Error loading complaint:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEmailHistory = async (complaintId: string) => {
+    try {
+      setEmailHistoryLoading(true);
+      const response = await getEmailHistory({ complaintId, limit: 20 });
+      setEmailHistory(response.history || []);
+    } catch (error) {
+      console.error('Error loading email history:', error);
+    } finally {
+      setEmailHistoryLoading(false);
+    }
+  };
+  const openEmailModal = () => {
+    if (!customer?.email) {
+      alert('No customer email available');
+      return;
+    }
+    setEmailSubject(`Update regarding complaint ${(complaint as any)?.ticket_number || complaint?.subject}`);
+    setEmailMessage(`Hello ${customer.name},\n\n`);
+    setEmailStatus(null);
+    setEmailModalOpen(true);
+  };
+
+  const closeEmailModal = () => {
+    setEmailModalOpen(false);
+    setEmailSending(false);
+    setEmailStatus(null);
+  };
+
+  const handleSendEmail = async () => {
+    if (!customer?.email || !emailSubject.trim() || !emailMessage.trim()) {
+      setEmailStatus('Subject and message are required');
+      return;
+    }
+    setEmailSending(true);
+    setEmailStatus(null);
+    try {
+      const payload: SendEmailRequest = {
+        to: customer.email,
+        subject: emailSubject.trim(),
+        text: emailMessage.trim(),
+        customer_id: customer.id,
+        complaint_id: complaint?.id || id,
+        trigger: 'manual_complaint_email',
+      };
+      await sendEmail(payload);
+      setEmailStatus('Email sent successfully ✅');
+      await loadEmailHistory(complaint?.id || id!);
+      setEmailSending(false);
+      setTimeout(() => {
+        closeEmailModal();
+      }, 1200);
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to send email';
+      setEmailStatus(`Error: ${errorMsg}`);
+      setEmailSending(false);
     }
   };
 
@@ -54,6 +122,11 @@ const ComplaintDetail: React.FC = () => {
     try {
       await complaintService.updateStatus(id, newStatus);
       await loadComplaint(); // Reload to get updated data
+
+      // Show success message when complaint is resolved
+      if (newStatus === 'resolved') {
+        alert('Complaint has been resolved successfully.');
+      }
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Failed to update status');
@@ -240,6 +313,7 @@ const ComplaintDetail: React.FC = () => {
   }
 
   const nextStatus = getNextStatus(complaint.status);
+  const resolution: any = (complaint as any).resolution;
 
   return (
     <div className="min-h-screen bg-dark-bg">
@@ -339,10 +413,17 @@ const ComplaintDetail: React.FC = () => {
             )}
 
             {/* Resolution */}
-            {complaint.resolution && (
+            {resolution && (
               <div className="bg-dark-bg-card rounded-lg p-6 border border-border">
                 <h3 className="text-lg font-semibold text-text-primary mb-4">Resolution</h3>
-                <p className="text-text-primary whitespace-pre-wrap">{complaint.resolution}</p>
+                <p className="text-text-primary whitespace-pre-wrap">
+                  {typeof resolution === 'string' ? resolution : resolution?.notes || ''}
+                </p>
+                {typeof resolution !== 'string' && resolution?.customerSatisfaction && (
+                  <p className="text-sm text-text-secondary mt-2">
+                    Customer Satisfaction: {resolution.customerSatisfaction}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -401,6 +482,59 @@ const ComplaintDetail: React.FC = () => {
                     <span className="ml-2 text-text-primary">
                       {new Date(complaint.sla_deadline).toLocaleDateString()}
                     </span>
+                  </div>
+                )}
+              </div>
+
+              {customer?.email && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold text-text-secondary mb-2">Customer Email</h4>
+                  <p className="text-text-primary text-sm break-all">{customer.email}</p>
+                  <button
+                    onClick={openEmailModal}
+                    className="mt-3 w-full px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors"
+                  >
+                    Send Email
+                  </button>
+                </div>
+              )}
+
+              {/* Email History */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-text-secondary">Email History</h4>
+                  <button
+                    onClick={() => complaint?.id && loadEmailHistory(complaint.id)}
+                    className="text-xs text-primary-purple hover:text-secondary-purple"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {emailHistoryLoading ? (
+                  <p className="text-text-secondary text-sm">Loading history...</p>
+                ) : emailHistory.length === 0 ? (
+                  <p className="text-text-secondary text-sm">No emails sent yet.</p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {emailHistory.map((entry) => (
+                      <div key={entry.id} className="border border-border rounded-lg p-3 bg-dark-bg-secondary">
+                        <div className="flex justify-between text-xs text-text-secondary mb-1">
+                          <span>{entry.sent_at ? new Date(entry.sent_at).toLocaleString() : 'Pending'}</span>
+                          <span className={entry.status === 'sent' ? 'text-green-400' : 'text-red-400'}>
+                            {entry.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-text-primary">{entry.subject}</p>
+                        <p className="text-xs text-text-secondary truncate">
+                          To: {(entry.to || []).join(', ') || 'Unknown'}
+                        </p>
+                        {entry.trigger && (
+                          <span className="text-[10px] uppercase tracking-wide text-text-secondary">
+                            Trigger: {entry.trigger}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -493,6 +627,81 @@ const ComplaintDetail: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Email Modal */}
+      {emailModalOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-dark-bg-card border border-border rounded-lg shadow-lg max-w-lg w-full p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-text-primary">Send Email</h3>
+              <button
+                onClick={closeEmailModal}
+                className="text-text-secondary hover:text-text-primary"
+                disabled={emailSending}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-text-secondary block mb-1">To</label>
+                <input
+                  type="text"
+                  value={customer?.email || ''}
+                  readOnly
+                  className="w-full bg-dark-bg border border-border rounded px-3 py-2 text-text-primary cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-text-secondary block mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className="w-full bg-dark-bg border border-border rounded px-3 py-2 text-text-primary focus:outline-none focus:border-primary-purple"
+                  placeholder="Enter subject"
+                  disabled={emailSending}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-text-secondary block mb-1">Message</label>
+                <textarea
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  rows={6}
+                  className="w-full bg-dark-bg border border-border rounded px-3 py-2 text-text-primary focus:outline-none focus:border-primary-purple"
+                  placeholder="Write your message..."
+                  disabled={emailSending}
+                />
+              </div>
+            </div>
+
+            {emailStatus && (
+              <div className={`text-sm ${emailStatus.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                {emailStatus}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeEmailModal}
+                className="px-4 py-2 rounded border border-border text-text-secondary hover:text-text-primary"
+                disabled={emailSending}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                className="px-4 py-2 rounded bg-primary-purple text-white hover:bg-secondary-purple disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={emailSending}
+              >
+                {emailSending ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

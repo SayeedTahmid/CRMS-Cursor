@@ -52,6 +52,12 @@ const Navigation: React.FC = () => {
             >
               Reports
             </Link>
+            <Link
+              to="/settings"
+              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+            >
+              Settings
+            </Link>
             
             <div className="flex items-center space-x-2 ml-4">
               <span className="text-text-secondary text-sm">
@@ -69,10 +75,11 @@ const Navigation: React.FC = () => {
                 
                 <Link
                   to="/settings"
-                  className="p-2 text-text-secondary hover:text-primary-purple transition-colors rounded-lg hover:bg-dark-bg-input"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-secondary hover:text-primary-purple transition-colors rounded-lg hover:bg-dark-bg-input"
                   title="Settings"
                 >
                   <Cog6ToothIcon className="w-5 h-5" />
+                  <span>Settings</span>
                 </Link>
                 
                 <button

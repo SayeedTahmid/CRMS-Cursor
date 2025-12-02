@@ -1,0 +1,447 @@
+---
+pid: 4792
+cwd: |
+  C:\Users\User\.cursor\CRMS\backend
+last_command: python app.py
+last_exit_code: 1
+---
+        metadata=metadata,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\gapic_v1\method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+        target,
+    ...<3 lines>...
+        on_error=on_error,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+        exc,
+    ...<6 lines>...
+        timeout,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_unary.py", line 147, in retry_target
+    result = target()
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\grpc_helpers.py", line 173, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc  
+google.api_core.exceptions.FailedPrecondition: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/next-gen-crm-system/firestore/indexes?create_composite=Cllwcm9qZWN0cy9uZXh0LWdlbi1jcm0tc3lzdGVtL2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9lbWFpbF9oaXN0b3J5L2luZGV4ZXMvXxABGhAKDGNvbXBsYWludF9pZBABGg0KCXRlbmFudF9pZBABGgsKB3NlbnRfYXQQAhoMCghfX25hbWVfXxAC    
+127.0.0.1 - - [03/Dec/2025 02:35:02] "GET /api/email/history?complaintId=d72jwLVFM6NPjkfngTj2&limit=20 HTTP/1.1" 200 -
+Error fetching email history: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/next-gen-crm-system/firestore/indexes?create_composite=Cllwcm9qZWN0cy9uZXh0LWdlbi1jcm0tc3lzdGVtL2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9lbWFpbF9oaXN0b3J5L2luZGV4ZXMvXxABGhAKDGNvbXBsYWludF9pZBABGg0KCXRlbmFudF9pZBABGgsKB3NlbnRfYXQQAhoMCghfX25hbWVfXxAC
+Traceback (most recent call last):
+  File "C:\Users\User\.cursor\CRMS\backend\services\email_history_service.py", line 80, in get_email_history
+    for doc in query.stream():
+               ~~~~~~~~~~~~^^
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\cloud\firestore_v1\stream_generator.py", line 58, in __next__
+    return self._generator.__next__()
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\cloud\firestore_v1\query.py", line 410, in _make_stream
+    response_iterator, expected_prefix = self._get_stream_iterator(
+                                         ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        transaction,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        explain_options,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\cloud\firestore_v1\query.py", line 260, in _get_stream_iterator
+    response_iterator = self._client._firestore_api.run_query(
+        request=request,
+        metadata=self._client._rpc_metadata,        
+        **kwargs,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\cloud\firestore_v1\services\firestore\client.py", line 1624, in run_query       
+    response = rpc(
+        request,
+    ...<2 lines>...
+        metadata=metadata,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\gapic_v1\method.py", line 131, in __call__
+    return wrapped_func(*args, **kwargs)
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_unary.py", line 294, in retry_wrapped_func
+    return retry_target(
+        target,
+    ...<3 lines>...
+        on_error=on_error,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_unary.py", line 156, in retry_target
+    next_sleep = _retry_error_helper(
+        exc,
+    ...<6 lines>...
+        timeout,
+    )
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_base.py", line 214, in _retry_error_helper
+    raise final_exc from source_exc
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\retry\retry_unary.py", line 147, in retry_target
+    result = target()
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\timeout.py", line 130, in func_with_timeout
+    return func(*args, **kwargs)
+  File "C:\Users\User\AppData\Roaming\Python\Python313\site-packages\google\api_core\grpc_helpers.py", line 173, in error_remapped_callable
+    raise exceptions.from_grpc_error(exc) from exc  
+google.api_core.exceptions.FailedPrecondition: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/next-gen-crm-system/firestore/indexes?create_composite=Cllwcm9qZWN0cy9uZXh0LWdlbi1jcm0tc3lzdGVtL2RhdGFiYXNlcy8oZGVmYXVsdCkvY29sbGVjdGlvbkdyb3Vwcy9lbWFpbF9oaXN0b3J5L2luZGV4ZXMvXxABGhAKDGNvbXBsYWludF9pZBABGg0KCXRlbmFudF9pZBABGgsKB3NlbnRfYXQQAhoMCghfX25hbWVfXxAC    
+127.0.0.1 - - [03/Dec/2025 02:35:02] "GET /api/email/history?complaintId=d72jwLVFM6NPjkfngTj2&limit=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:04] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:04] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:05] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:05] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "OPTIONS /api/logs?page=1&limit=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/logs?page=1&limit=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/logs?page=1&limit=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "OPTIONS /api/customers/bULGokxd8hHUVpzWgbAH HTTP/1.1" 200 -       
+127.0.0.1 - - [03/Dec/2025 02:35:06] "OPTIONS /api/customers/70jhDHX1DWAoXczQlYI7 HTTP/1.1" 200 -       
+127.0.0.1 - - [03/Dec/2025 02:35:06] "OPTIONS /api/customers/F9uSG5u5aonOAvOtqwSJ HTTP/1.1" 200 -       
+127.0.0.1 - - [03/Dec/2025 02:35:06] "OPTIONS /api/customers/IJzzpxR7s28s6ZzE9Mhy HTTP/1.1" 200 -       
+127.0.0.1 - - [03/Dec/2025 02:35:06] "OPTIONS /api/customers/Y6w3OR0My7dy944ORrU2 HTTP/1.1" 200 -       
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/customers/70jhDHX1DWAoXczQlYI7 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/customers/bULGokxd8hHUVpzWgbAH HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/customers/IJzzpxR7s28s6ZzE9Mhy HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/customers/F9uSG5u5aonOAvOtqwSJ HTTP/1.1" 404 -
+127.0.0.1 - - [03/Dec/2025 02:35:06] "GET /api/customers/Y6w3OR0My7dy944ORrU2 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:10] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:10] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:39] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:40] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:35:40] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:36:04] "GET /api/auth/status HTTP/1.1" 200 -
+⚠️ Token verification error: Token expired, 17647073361 < 1764707764
+127.0.0.1 - - [03/Dec/2025 02:36:04] "GET /api/metrics HTTP/1.1" 401 -
+⚠️ Token verification error: Token expired, 17647073361 < 1764707764
+127.0.0.1 - - [03/Dec/2025 02:36:04] "GET /api/logs HTTP/1.1" 401 -
+127.0.0.1 - - [03/Dec/2025 02:36:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:36:10] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:36:11] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:36:40] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:36:40] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:36:41] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:37:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:37:10] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:37:11] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:37:40] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:37:40] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:38:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:38:10] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:38:11] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:39:11] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:39:11] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:39:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:40:11] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:40:11] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:40:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:41:11] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:41:11] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:41:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:42:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:42:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:42:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:43:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:43:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:43:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:44:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:44:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:44:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:45:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:45:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:45:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:46:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:46:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:46:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:47:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:47:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:47:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:48:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:48:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:48:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:49:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:49:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:49:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:50:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:50:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:50:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:51:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:51:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:51:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:52:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:52:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:52:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:53:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:53:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:53:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:54:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:54:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:54:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:55:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:55:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:55:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:56:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:56:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:56:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:57:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:57:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:57:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:58:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:58:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:58:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:59:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:59:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 02:59:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:00:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:00:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:00:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:01:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:01:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:01:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:02:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:02:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:02:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:03:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:03:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:03:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:04:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:04:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:04:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:05:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:05:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:05:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:16] "OPTIONS /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -        
+127.0.0.1 - - [03/Dec/2025 03:06:16] "OPTIONS /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -        
+127.0.0.1 - - [03/Dec/2025 03:06:16] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:17] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:17] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:17] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:18] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:18] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:40] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:47] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:06:48] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:07:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:07:17] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:07:18] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:07:47] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:07:48] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:08:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:08:17] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:08:18] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:08:47] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:08:48] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:09:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:09:17] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:09:18] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:10:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:10:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:10:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:13] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:13] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:13] "GET /api/metrics HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:11:18] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:19] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:20] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:21] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:21] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:21] "GET /api/telegram/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:28] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:29] "GET /api/users HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:46] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:11:46] "GET /api/metrics HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:12:02] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:12:03] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:12:04] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:12:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:12:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:12:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:13:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:13:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:13:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:53] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:53] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:53] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:55] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:55] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:55] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:14:56] "GET /api/telegram/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:15:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:15:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:15:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:16:10] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:16:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:16:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:16:56] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:16:56] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:16:56] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:17:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:17:17] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:17:18] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:17:40] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:17:47] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:17:48] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:18:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:18:40] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:19:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:19:40] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:20:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:21:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:22:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:23:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:24:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:25:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:26:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:27:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:28:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:29:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:30:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:28] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:29] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:29] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:29] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:30] "GET /api/telegram/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:31] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:32] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:35] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:35] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:35] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:35] "GET /api/telegram/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:37] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:38] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:38] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:38] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:38] "GET /api/telegram/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:39] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:31:40] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:41] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:42] "GET /api/metrics HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:31:45] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:47] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:47] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:49] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:51] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:51] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:59] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:59] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:31:59] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:32:00] "GET /api/telegram/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:32:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:33:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:34:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:35:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:49] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:49] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:50] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:55] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:56] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:56] "GET /api/metrics HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:36:58] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:36:59] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:00] "GET /api/taiga/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:00] "GET /api/auth/user HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:00] "GET /api/email/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:01] "GET /api/telegram/status HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:37:03] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:04] "GET /api/customers/70jhDHX1DWAoXczQlYI7 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:04] "GET /api/customers/70jhDHX1DWAoXczQlYI7/logs HTTP/1.1" 200 -      
+127.0.0.1 - - [03/Dec/2025 03:37:04] "GET /api/customers/70jhDHX1DWAoXczQlYI7/complaints HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:37:05] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:06] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:06] "GET /api/metrics HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:37:09] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:10] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:11] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:12] "GET /api/complaints?page=1&pageSize=20 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:13] "GET /api/logs HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:37:13] "GET /api/metrics HTTP/1.1" 200 -
+✅ Customer 1: ID present=True, ID value='70jhDHX1DWAoXczQlYI7', Name='Faisal Rupom ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 2: ID present=True, ID value='8iQiqyCspwnaWCCkEXv2', Name='Shahadat Sunny ', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']     
+✅ Customer 3: ID present=True, ID value='HGGAi5PSc9YXHjSTSjJZ', Name='Nafees Rahman', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']       
+✅ Customer 4: ID present=True, ID value='IJzzpxR7s28s6ZzE9Mhy', Name='Tawsif Alam', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address']
+✅ Customer 5: ID present=True, ID value='IO7ZLwyFjiYwzSozXlN2', Name='Syed Tahmid Manzoor', Keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address'] 
+📊 Sending response: 15 customers, 15 with IDs      
+📋 First customer in response: ID=70jhDHX1DWAoXczQlYI7, Name=Faisal Rupom , All keys=['id', 'created_at', 'updated_at', 'created_by', 'tenant_id', 'name', 'email', 'phone', 'company', 'address', 'city', 'state', 'country', 'postal_code', 'industry', 'type', 'status', 'tags', 'secondary_phone', 'secondary_email', 'website', 'notes', 'last_contact_date', 'total_orders', 'total_value']
+127.0.0.1 - - [03/Dec/2025 03:37:15] "GET /api/customers?page=1&limit=100 HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:53] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:57] "OPTIONS /api/auth/verify HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:57] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:57] "OPTIONS /api/auth/verify HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:57] "POST /api/auth/verify HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:57] "POST /api/auth/verify HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:58] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:38:58] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:39:10] "GET /api/auth/status HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:39:27] "OPTIONS /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:39:28] "GET /api/metrics HTTP/1.1" 200 -
+127.0.0.1 - - [03/Dec/2025 03:39:40] "GET /api/auth/status HTTP/1.1" 200 -
+PS C:\Users\User\.cursor\CRMS\backend>

@@ -6,6 +6,7 @@ from utils.firebase import get_db, verify_token
 from models.customer import Customer
 from api.auth import require_auth, require_permission
 from google.cloud.firestore_v1.base_query import FieldFilter
+from utils.email_notifications import notify_customer_created_email
 
 customers_bp = Blueprint('customers', __name__)
 
@@ -325,6 +326,17 @@ def create_customer():
             import traceback
             traceback.print_exc()
             # Don't fail the request if notification fails
+
+        # Send welcome email (non-blocking)
+        try:
+            notify_customer_created_email(
+                tenant_id=tenant_id,
+                customer={"id": customer_id, **customer_dict_base}
+            )
+        except Exception as email_error:
+            print(f"[Customer Creation] Warning: Failed to send email notification: {email_error}")
+            import traceback
+            traceback.print_exc()
         
         return jsonify({
             'message': 'Customer created successfully',

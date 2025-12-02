@@ -1,15 +1,29 @@
 // frontend/src/pages/Settings.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Cog6ToothIcon, BellIcon, PaintBrushIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { sendEmail, getEmailStatus, EmailStatusResponse } from '../services/email';
+import { usersService, User } from '../services/users';
+import { canManageUsers, normalizeRole } from '../utils/permissions';
+import { Cog6ToothIcon, BellIcon, PaintBrushIcon, ArrowDownTrayIcon, EnvelopeIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'appearance' | 'data'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'appearance' | 'data' | 'email' | 'users'>('general');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // User management state
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState<User | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('viewer');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  
+  const canManage = canManageUsers(user?.role);
 
   const [notificationSettings, setNotificationSettings] = useState({
     email_notifications: true,
@@ -24,12 +38,118 @@ const Settings: React.FC = () => {
     compact_mode: false,
     sidebar_collapsed: false,
   });
+  const [emailStatusInfo, setEmailStatusInfo] = useState<EmailStatusResponse | null>(null);
+  const [emailStatusLoading, setEmailStatusLoading] = useState(false);
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState('');
+  const [testEmailForm, setTestEmailForm] = useState({
+    to: '',
+    subject: 'Test email from NextGen CRM',
+    message: 'Hello!\n\nThis is a test email from NextGen CRM settings.\n\nThanks!',
+  });
+
+  useEffect(() => {
+    if (activeTab === 'email') {
+      loadEmailStatus();
+    } else if (activeTab === 'users' && canManage) {
+      loadUsers();
+    }
+  }, [activeTab, canManage]);
+  
+  const loadUsers = async () => {
+    if (!canManage) return;
+    setUsersLoading(true);
+    try {
+      const response = await usersService.list();
+      setUsers(response.users || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load users');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+  
+  const handleInviteUser = async () => {
+    if (!inviteEmail.trim()) {
+      setError('Email is required');
+      return;
+    }
+    setInviteLoading(true);
+    setError('');
+    try {
+      await usersService.invite(inviteEmail.trim(), inviteRole);
+      setSuccess(`User ${inviteEmail} invited successfully with role ${inviteRole}`);
+      setInviteEmail('');
+      setInviteRole('viewer');
+      setShowInviteModal(false);
+      loadUsers();
+    } catch (err: any) {
+      setError(err.message || 'Failed to invite user');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+  
+  const handleChangeRole = async (uid: string, newRole: string) => {
+    if (!uid) return;
+    setInviteLoading(true);
+    setError('');
+    try {
+      await usersService.setRole(uid, newRole);
+      setSuccess('User role updated successfully');
+      setShowRoleModal(null);
+      await loadUsers();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update role');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
   const handleNotificationChange = (key: string) => {
     setNotificationSettings(prev => ({
       ...prev,
       [key]: !prev[key as keyof typeof prev]
     }));
+  };
+
+  const loadEmailStatus = async () => {
+    try {
+      setEmailStatusLoading(true);
+      const status = await getEmailStatus();
+      setEmailStatusInfo(status);
+    } catch (error: any) {
+      console.error('Error loading email status:', error);
+      setEmailStatusInfo({
+        configured: false,
+        message: error.response?.data?.error || 'Failed to load email status',
+      });
+    } finally {
+      setEmailStatusLoading(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testEmailForm.to) {
+      setTestEmailResult('Please enter a recipient email address.');
+      return;
+    }
+    try {
+      setTestEmailSending(true);
+      setTestEmailResult('');
+      await sendEmail({
+        to: testEmailForm.to,
+        subject: testEmailForm.subject,
+        text: testEmailForm.message,
+        trigger: 'settings_test_email',
+      });
+      setTestEmailResult('Test email sent successfully ✅');
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      setTestEmailResult(error.response?.data?.error || error.message || 'Failed to send test email');
+    } finally {
+      setTestEmailSending(false);
+    }
   };
 
   const handleAppearanceChange = (key: string, value: any) => {
@@ -75,12 +195,19 @@ const Settings: React.FC = () => {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-dark-bg text-text-primary">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-dark-bg-card rounded-lg p-6 border border-border">
           <div className="flex items-center gap-4 mb-6">
             <Cog6ToothIcon className="w-8 h-8 text-primary-purple" />
             <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
+            {user && (
+              <div className="ml-auto text-sm text-text-secondary">
+                Role: <span className="text-primary-purple">{normalizeRole(user.role)}</span>
+                {canManage && <span className="ml-2 text-success">✓ Can manage users</span>}
+              </div>
+            )}
           </div>
 
           {error && (
@@ -135,6 +262,30 @@ const Settings: React.FC = () => {
               <ArrowDownTrayIcon className="w-5 h-5" />
               Data
             </button>
+            <button
+              onClick={() => setActiveTab('email')}
+              className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                activeTab === 'email'
+                  ? 'text-primary-purple border-b-2 border-primary-purple'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              <EnvelopeIcon className="w-5 h-5" />
+              Email
+            </button>
+            {canManage && (
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-4 py-2 font-medium transition-colors flex items-center gap-2 ${
+                  activeTab === 'users'
+                    ? 'text-primary-purple border-b-2 border-primary-purple'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <UserGroupIcon className="w-5 h-5" />
+                Users
+              </button>
+            )}
           </div>
 
           {/* Tab Content */}
@@ -286,6 +437,130 @@ const Settings: React.FC = () => {
               </div>
             )}
 
+            {activeTab === 'email' && (
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Email (Resend) Settings</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="p-4 bg-dark-bg-secondary rounded-lg border border-border">
+                    <h3 className="font-medium text-text-primary mb-2">Service Status</h3>
+                    {emailStatusLoading ? (
+                      <p className="text-text-secondary text-sm">Checking Resend status...</p>
+                    ) : (
+                      <div className="space-y-2 text-sm text-text-primary">
+                        <p>
+                          Status:{' '}
+                          <span className={emailStatusInfo?.configured ? 'text-green-400' : 'text-red-400'}>
+                            {emailStatusInfo?.configured ? 'Configured' : 'Not configured'}
+                          </span>
+                        </p>
+                        {emailStatusInfo?.from_email && <p>From: {emailStatusInfo.from_email}</p>}
+                        <p className="text-text-secondary">{emailStatusInfo?.message}</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={loadEmailStatus}
+                      className="mt-3 px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors"
+                    >
+                      Refresh Status
+                    </button>
+                  </div>
+                  <div className="p-4 bg-dark-bg-secondary rounded-lg border border-border">
+                    <h3 className="font-medium text-text-primary mb-2">Send Test Email</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm text-text-secondary mb-1">Recipient</label>
+                        <input
+                          type="email"
+                          value={testEmailForm.to}
+                          onChange={(e) => setTestEmailForm((prev) => ({ ...prev, to: e.target.value }))}
+                          className="w-full p-2 rounded-md bg-dark-bg-input border border-border focus:outline-none focus:ring-2 focus:ring-primary-purple text-text-primary"
+                          placeholder="recipient@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-text-secondary mb-1">Subject</label>
+                        <input
+                          type="text"
+                          value={testEmailForm.subject}
+                          onChange={(e) => setTestEmailForm((prev) => ({ ...prev, subject: e.target.value }))}
+                          className="w-full p-2 rounded-md bg-dark-bg-input border border-border focus:outline-none focus:ring-2 focus:ring-primary-purple text-text-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-text-secondary mb-1">Message</label>
+                        <textarea
+                          value={testEmailForm.message}
+                          onChange={(e) => setTestEmailForm((prev) => ({ ...prev, message: e.target.value }))}
+                          rows={6}
+                          className="w-full p-2 rounded-md bg-dark-bg-input border border-border focus:outline-none focus:ring-2 focus:ring-primary-purple text-text-primary"
+                        />
+                      </div>
+                      {testEmailResult && (
+                        <p className={`text-sm ${testEmailResult.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                          {testEmailResult}
+                        </p>
+                      )}
+                      <button
+                        onClick={handleSendTestEmail}
+                        disabled={testEmailSending}
+                        className="px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors disabled:opacity-50"
+                      >
+                        {testEmailSending ? 'Sending...' : 'Send Test Email'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'users' && canManage && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">User Management</h2>
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors flex items-center gap-2"
+                  >
+                    <span>+</span> Invite User
+                  </button>
+                </div>
+                
+                {usersLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-purple mx-auto"></div>
+                    <p className="mt-2 text-text-secondary">Loading users...</p>
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary">No users found.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {users.map((u) => (
+                      <div
+                        key={u.id}
+                        className="p-4 bg-dark-bg-secondary rounded-lg border border-border flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="font-medium text-text-primary">
+                            {u.displayName || u.email || u.id}
+                          </p>
+                          <p className="text-sm text-text-secondary">{u.email}</p>
+                          <p className="text-xs text-text-secondary mt-1">
+                            Role: <span className="text-primary-purple">{normalizeRole(u.role)}</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowRoleModal(u)}
+                          className="px-3 py-1 text-sm bg-dark-bg-card border border-border rounded hover:bg-dark-bg transition-colors"
+                        >
+                          Change Role
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-end pt-4 border-t border-border">
               <button
                 onClick={handleSaveSettings}
@@ -298,7 +573,124 @@ const Settings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Invite User Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-bg-card rounded-lg p-6 border border-border w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Invite User</h3>
+            {error && (
+              <div className="bg-error/20 text-error p-3 rounded-md mb-4">{error}</div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="w-full p-2 rounded-md bg-dark-bg-input border border-border focus:outline-none focus:ring-2 focus:ring-primary-purple text-text-primary"
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">
+                  Role
+                </label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="w-full p-2 rounded-md bg-dark-bg-input border border-border focus:outline-none focus:ring-2 focus:ring-primary-purple text-text-primary"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="support">Support</option>
+                  <option value="sales_rep">Sales Rep</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin (Tenant Admin)</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteEmail('');
+                  setError('');
+                }}
+                className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
+                disabled={inviteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInviteUser}
+                disabled={inviteLoading || !inviteEmail.trim()}
+                className="px-4 py-2 bg-primary-purple text-white rounded-lg hover:bg-secondary-purple transition-colors disabled:opacity-50"
+              >
+                {inviteLoading ? 'Inviting...' : 'Invite'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Role Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-bg-card rounded-lg p-6 border border-border w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Change Role</h3>
+            <p className="text-text-secondary mb-4">
+              User: {showRoleModal.email || showRoleModal.id}
+            </p>
+            {error && (
+              <div className="bg-error/20 text-error p-3 rounded-md mb-4">{error}</div>
+            )}
+            <div className="space-y-2 mb-6">
+              {['viewer', 'support', 'sales_rep', 'manager', 'admin'].map((role) => {
+                const currentRole = showRoleModal.role?.toLowerCase();
+                const isSelected = currentRole === role || (role === 'admin' && (currentRole === 'tenant_admin' || currentRole === 'admin'));
+                return (
+                  <label
+                    key={role}
+                    className="flex items-center p-3 bg-dark-bg-secondary rounded-lg cursor-pointer hover:bg-dark-bg transition-colors"
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value={role}
+                      checked={isSelected}
+                      onChange={() => {
+                        const newRole = role === 'admin' ? 'admin' : role;
+                        handleChangeRole(showRoleModal.id, newRole);
+                      }}
+                      className="mr-3"
+                    />
+                    <span className="text-text-primary capitalize">
+                      {role === 'admin' ? 'Admin (Tenant Admin)' : role.replace('_', ' ')}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowRoleModal(null);
+                  setError('');
+                }}
+                className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
+                disabled={inviteLoading}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 };
 

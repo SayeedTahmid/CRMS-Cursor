@@ -1,0 +1,15 @@
+---
+pid: 8392
+cwd: |
+  C:\Users\User\.cursor
+last_command: echo updating auth for email/password
+last_exit_code: 0
+---
+PS C:\Users\User\.cursor> echo syncing
+syncing
+PS C:\Users\User\.cursor> echo updating auth for email/password
+updating
+auth
+for
+email/password
+PS C:\Users\User\.cursor>

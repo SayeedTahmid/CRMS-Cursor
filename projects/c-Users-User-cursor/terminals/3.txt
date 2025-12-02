@@ -1,0 +1,93 @@
+---
+pid: 19352
+cwd: |
+  C:/Users/User/.cursor
+active_command: git add .
+last_command: git status
+last_exit_code: 0
+---
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$ git init
+Reinitialized existing Git repository in C:/Users/User/.cursor/.git/
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$ git add .
+warning: in the working copy of 'CRMS/backend/api/customers.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CRMS/backend/app.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CRMS/frontend/src/pages/CustomerDetail.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CRMS/frontend/src/pages/Customers.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CRMS/frontend/src/pages/Dashboard.tsx', LF will be replaced by CRLF the next time Git touches it
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$ git commit -m " Telegram bot implemented "
+[main 9af5519]  Telegram bot implemented
+ 21 files changed, 1666 insertions(+), 11 deletions(-)
+ create mode 100644 CRMS/TELEGRAM_BOT_INTEGRATION.md
+ create mode 100644 CRMS/TELEGRAM_NOTIFICATIONS_DEBUG.md
+ create mode 100644 CRMS/TELEGRAM_NOTIFICATIONS_INTEGRATION.md
+ create mode 100644 CRMS/backend/api/telegram.py
+ create mode 100644 CRMS/backend/services/telegram_service.py
+ create mode 100644 CRMS/backend/utils/telegram_notifications.py        
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$ git push
+Enumerating objects: 59, done.
+Counting objects: 100% (59/59), done.
+Delta compression using up to 12 threads
+Compressing objects: 100% (33/33), done.
+Writing objects: 100% (33/33), 16.91 KiB | 4.23 MiB/s, done.
+Total 33 (delta 24), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (24/24), completed with 24 local objects 
+To https://github.com/SayeedTahmid/CRMS-Cursor.git
+   327a5bb..9af5519  main -> main
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$
+ *  History restored 
+
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$ 
+ *  History restored 
+
+
+User@SayeedTahmid MINGW64 ~/.cursor (main)
+$ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   CRMS/backend/api/auth.py
+        modified:   CRMS/backend/api/complaints.py
+        modified:   CRMS/backend/api/customers.py
+        modified:   CRMS/backend/api/taiga.py
+        modified:   CRMS/backend/api/users.py
+        modified:   CRMS/backend/app.py
+        modified:   CRMS/backend/utils/rbac.py      
+        modified:   CRMS/frontend/src/components/Navigation.tsx
+        modified:   CRMS/frontend/src/pages/ComplaintDetail.tsx
+        modified:   CRMS/frontend/src/pages/CustomerDetail.tsx
+        modified:   CRMS/frontend/src/pages/Dashboard.tsx
+        modified:   CRMS/frontend/src/pages/Settings.tsx
+        modified:   CRMS/frontend/src/services/users.ts
+        modified:   CRMS/frontend/src/utils/permissions.ts
+        modified:   extensions/extensions.json      
+        modified:   ide_state.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        CRMS/RESEND_EMAIL_INTEGRATION.md
+        CRMS/backend/api/email.py
+        CRMS/backend/services/email_history_service.py
+        CRMS/backend/services/email_service.py      
+        CRMS/backend/utils/email_notifications.py   
+        CRMS/frontend/src/services/email.ts
+        CRMS/mobile/
+        projects/
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+User@SayeedTahmid MINGW64 ~/

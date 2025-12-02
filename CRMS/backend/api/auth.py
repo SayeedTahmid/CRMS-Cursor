@@ -160,18 +160,30 @@ def require_role(*allowed_roles):
         @wraps(f)
         @require_auth
         def decorated_function(*args, **kwargs):
-            from utils.rbac import normalize_role
+            from utils.rbac import normalize_role, SUPER_ADMIN, TENANT_ADMIN
             role = request.user.get("role", User.ROLE_VIEWER)
             normalized_role = normalize_role(role)
             # Normalize allowed roles too
             allowed_roles_normalized = [normalize_role(r) for r in allowed_roles]
+            
+            # SUPER_ADMIN should have access to everything (check both normalized and original)
+            role_upper = str(role).upper().strip() if role else ""
+            if normalized_role == SUPER_ADMIN or "SUPER_ADMIN" in role_upper or role_upper == "SUPER_ADMIN":
+                return f(*args, **kwargs)
+            
+            # If ADMIN is required (check both "admin" string and ADMIN constant), also allow SUPER_ADMIN and TENANT_ADMIN
+            allowed_roles_lower = [str(r).lower() for r in allowed_roles]
+            if "admin" in allowed_roles_lower:
+                if normalized_role in [SUPER_ADMIN, TENANT_ADMIN] or "SUPER_ADMIN" in role_upper or "TENANT_ADMIN" in role_upper:
+                    return f(*args, **kwargs)
             
             if normalized_role not in allowed_roles_normalized:
                 return jsonify({
                     "error": "Insufficient role",
                     "required": allowed_roles,
                     "current": role,
-                    "normalized_current": normalized_role
+                    "normalized_current": normalized_role,
+                    "allowed_normalized": allowed_roles_normalized
                 }), 403
             
             return f(*args, **kwargs)

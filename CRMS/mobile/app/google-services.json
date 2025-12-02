@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "630199087821",
+    "project_id": "next-gen-crm-system",
+    "storage_bucket": "next-gen-crm-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630199087821:android:1799d6d765fd4e939aaf84",
+        "android_client_info": {
+          "package_name": "com.nextgencrm.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAotS1rpZQv9ZCAczWtJ5Ah46lkACZk00Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -17,7 +17,7 @@ def _tenant_of_request():
 
 @users_bp.route("", methods=["GET"])
 @require_auth
-@require_role(ADMIN, MANAGER)  # managers can view; admin can view
+@require_role(ADMIN)  # Only ADMIN (TENANT_ADMIN) and SUPER_ADMIN can list users
 def list_users():
     """List users in the same tenant (minimal fields)."""
     db = get_db()
@@ -75,7 +75,7 @@ def set_user_role(uid):
 
 @users_bp.route('/invite', methods=['POST'])
 @require_auth
-@require_role(ADMIN)  # or ADMIN, MANAGER
+@require_role(ADMIN)  # Only ADMIN (TENANT_ADMIN) and SUPER_ADMIN can invite users
 def invite_user():
     db = get_db()
     tenant_id = _tenant_of_request()

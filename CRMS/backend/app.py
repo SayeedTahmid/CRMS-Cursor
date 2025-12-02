@@ -150,6 +150,13 @@ try:
 except ImportError:
     print("⚠️  Telegram module not available. Skipping registration.")
 
+# Register email blueprint if it exists
+try:
+    from api.email import email_bp
+    app.register_blueprint(email_bp, url_prefix='/api/email')
+except ImportError:
+    print("⚠️  Email module not available. Skipping registration.")
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

@@ -120,3 +120,12 @@ export const canDeleteComplaint = (role?: string): boolean => {
   return ["SUPER_ADMIN", "TENANT_ADMIN", "MANAGER"].includes(normalized);
 };
 
+/**
+ * Check if user can manage users (invite, change roles)
+ * Only SUPER_ADMIN and TENANT_ADMIN can manage users
+ */
+export const canManageUsers = (role?: string): boolean => {
+  const normalized = normalizeRole(role);
+  return ["SUPER_ADMIN", "TENANT_ADMIN"].includes(normalized);
+};
+
